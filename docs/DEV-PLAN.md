@@ -1,0 +1,39 @@
+# 开发计划 · 软组织肉瘤工作台（NCCN #53 · T0 肉瘤样板）
+
+> 里程碑只认这一份。流程依据 `prompts/ZERO-TO-DEV.md` v1.2。
+> 认领：组织 `.github` Issue **#25**（2026-10-25）。
+> 仓库（待 G1 后建，private）：`xyb-openharness-dsh-plugins/sarcoma-workbench`。
+
+## 里程碑
+
+| # | 阶段 | 判据 | 状态 |
+| --- | --- | --- | --- |
+| M0 | starter init + 基线检查 | `npm run check` → staticPass | ✅ 2026-10-25（`601f9e4`） |
+| M1 | 调研六件套（SPEC / DIFF-MATRIX / PATIENT-FLOW / SCENARIOS / SCHEMA 草案 / DEV-REQUIREMENTS） | 文档本地化，页面树定稿 | ▶ 进行中 |
+| M2 | schema 冻结 | `0001_initial.sql` + `freeze-contract.md`；四契约落地 | ⏳ |
+| M3 | 临床试验采集（多通道） | manifest / jsonl / sqlite 三数一致 | ⏳ |
+| M4 | 演示数据 + HTML demo（`prototypes/v0.2`） | 四必查件 + HVT X 层 + 窄宽；probe 出数字 | ⏳ |
+| M5 | 独立评审（`docs/DESIGN-REVIEW.md`） | 13 项检验单；P0 = 0 | ⏳ |
+| **G1** | **交第一次确认，停下等签认** | 用户原话留痕 | ⏳ |
+| M6 | 开发版移植（dsh 六件 + public + 检查链 + 单测） | `npm run check` 全绿 + parity + probe:dev | ⏳ 未授权 |
+| M7 | 装机（Desktop profile） | 宿主信号 + 真机 V2/V3 | ⏳ 未授权 |
+| M8 | 建私有仓 + push + BACKLOG 回流 | remote SSH；组织四件套同步 | ⏳ 未授权 |
+
+## 阶段 1.6 要交的东西（G1 前备齐）
+
+1. demo 打开方式（`file://` 路径）+ 关键页截图（`docs/shots/`）。
+2. `DIFF-MATRIX` 三行摘要（差异化种子、一级页账、刻意不同）。
+3. `CLINICAL-DATA-2026` 覆盖与缺口（逐来源终态）。
+4. **指南三层各自做到哪**：G1 出处层 / G2 节奏层 / G3 分级层 —— 本轮**均未做**（指南原件未取得）。
+5. 本轮明确未做的清单（见 DEV-REQUIREMENTS §四）。
+6. G1 决策点清单（含品牌定名、覆盖范围、页面树）。
+
+## 风险账（开工即记，不许事后补）
+
+1. **0 访谈**：六条患者假设全悬空，场景清单不得当已确认需求。（长期）
+2. **CSCO / NCCN 软组织肉瘤指南原件未取得**：因此 G1/G2/G3 三层本轮都不做，界面不出现「指南建议」。
+3. **中国获批药物清单未逐条核**：界面出现的每个药名都要标「获批状态未核实」。
+4. **肉瘤是异质性极强的病种（50+ 亚型，分期按部位分表）**：本轮只做常见亚型的通用记录口径，
+   不做亚型专属路径——做亚型专属等于在没有医学核对的情况下写临床路径。
+5. **肉瘤属罕见肿瘤，试验条目可能远少于常见癌种**：M3 采集若是 0 条或极少，
+   必须带该来源自己的覆盖声明，绝不把「没查到」写成「不存在」。
