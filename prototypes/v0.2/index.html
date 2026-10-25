@@ -107,6 +107,12 @@
   padding: 12px; margin: 0; font-size: calc(13px * var(--pv-tz));
 }
 
+/* ---------- 背景滚动锁：浮层开着期间宿主文档不许滚 ----------
+ * 只锁 html 不锁 body：写在 body 上 Safari 会漏（html 仍可滚）。
+ * 打开前记住 scrollY，关掉后先摘类再 scrollTo 还原。
+ */
+html.pv-lock{ overflow: hidden; }
+
 /* ---------- 窄屏：就是整屏 ---------- */
 @media (max-width: 760px){
   .pv-panel{ inset: 0; border-radius: 0; border: 0; }
@@ -225,6 +231,20 @@ function createPageView(options = {}) {
   /* file:// 下 pushState 可能被策略拒绝（例如某些企业策略）。只认一次真实成功，
      失败就整条 history 路径降级为直接改栈——否则 back() 会退到上一个文档，A3 会假绿。 */
   let historyOk = null
+  let savedScrollY = 0
+
+  /* 背景滚动锁：overflow:hidden 只挡用户滚动，挡不住程序化 scrollY（这一点在探针里
+     用真滚轮事件验证，不要用 window.scrollBy 当判据——它会给出假红）。 */
+  function lockScroll() {
+    if (typeof window === 'undefined') return
+    savedScrollY = window.scrollY || document.documentElement.scrollTop || 0
+    document.documentElement.classList.add('pv-lock')
+  }
+  function unlockScroll() {
+    if (typeof window === 'undefined') return
+    document.documentElement.classList.remove('pv-lock')
+    if (savedScrollY) { try { window.scrollTo(0, savedScrollY) } catch {} }
+  }
 
   // 鼠标点击在部分浏览器里不会把焦点给按钮，只记 activeElement 会让 A4 形同虚设。
   // 所以在捕获阶段记一次 pointerdown 的落点，作为"触发者"的兜底。
@@ -295,7 +315,7 @@ function createPageView(options = {}) {
     if (top && top.key === def.key) return top      // 连点不叠层
 
     ensureShell()
-    if (!stack.length) lastFocus = pickTrigger()
+    if (!stack.length) { lastFocus = pickTrigger(); lockScroll() }
 
     const entry = {
       key: def.key,
@@ -395,6 +415,7 @@ function createPageView(options = {}) {
     if (!overlay) return
     overlay.hidden = true
     bodyEl.replaceChildren()
+    unlockScroll()
     try { lastFocus && lastFocus.focus && lastFocus.focus() } catch {}
   }
 
