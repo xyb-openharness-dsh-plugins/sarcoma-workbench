@@ -21,7 +21,7 @@
 
 | 层 | 数量 | 命令 |
 | --- | --- | --- |
-| 交互红线 HVT X1–X4（含 IP1–IP10 落点） | **102/102** | `NODE_OPTIONS= node scripts/probe-interaction.mjs` |
+| 交互红线 HVT X1–X4（含 IP1–IP10 落点） | **103/103** | `NODE_OPTIONS= node scripts/probe-interaction.mjs` |
 | 原型四必查件（排版 / 字号三档 / 窄宽 / 一图秀 C1–C12）+ **768 逐页签 36 条逐条断言** | **65/65** | `NODE_OPTIONS= node scripts/probe-prototype.mjs` |
 | 整页视图 A1–A10（返回/关闭两层、Esc 各退一层、焦点与滚动还原） | **13/13** | `NODE_OPTIONS= node scripts/probe-page-view.mjs` |
 | 疾病概要「?」（四段齐全、每段有来源、趋势段无禁止词） | **9/9** | `NODE_OPTIONS= node scripts/probe-disease-primer.mjs` |
@@ -36,7 +36,7 @@
 - 指南三层（G1 出处 / G2 节奏 / G3 分级）**都没做**：CSCO 2025 原件未取得，NCCN / AJCC / WHO 均未取得原件，页码一律待核。
 - 私密内容三出口（`visibility` + 摘要 + 导出）**未做**，见 `docs/SPEC.md` 对应一节。
 - 患者/家属访谈 **0 次**，场景全为假设。
-- 768 宽逐页签实测只做了抽样，未全量。
+- ~~768 宽逐页签实测只做了抽样~~ → **已全量**：`P5-tab:` 逐页签 36 条断言（`P1` 报 37 个状态：1 个无页签页 + 36 个页签）。
 
 ## 三、需要用户决定的点
 

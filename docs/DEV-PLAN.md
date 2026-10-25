@@ -12,7 +12,7 @@
 | M1 | 调研六件套（SPEC / DIFF-MATRIX / PATIENT-FLOW / SCENARIOS / SCHEMA / DEV-REQUIREMENTS） | 文档本地化，页面树定稿 | ✅ 2026-10-25（`9b866f4` + `f78261a`） |
 | M2 | schema 冻结 | `0001_initial.sql` + `freeze-contract.md`；四契约落地 | ✅ 2026-10-25（`7641895`，27 表） |
 | M3 | 临床试验采集（多通道） | manifest / jsonl / sqlite 三数一致 | ✅ 2026-10-25（263 = 263 = 263；原始 381，三分区 60+150+53 对账成立） |
-| M4 | 演示数据 + HTML demo（`prototypes/v0.2`） | 四必查件 + HVT X 层 + 窄宽 + **整页视图 A1–A10**；probe 出数字 | ✅ 收口（A1–A10 **13/13**、原型四必查件 **65/65**、primer **9/9**、HVT **102/102** X1=1/X2=1/X3=1/X4=1；自测 **4/4** 命中） |
+| M4 | 演示数据 + HTML demo（`prototypes/v0.2`） | 四必查件 + HVT X 层 + 窄宽 + **整页视图 A1–A10**；probe 出数字 | ✅ 收口（A1–A10 **13/13**、原型四必查件 **65/65**、primer **9/9**、HVT **103/103** X1=1/X2=1/X3=1/X4=1；自测 **4/4** 命中） |
 | M5 | 独立评审（`docs/DESIGN-REVIEW.md`） | 13 项检验单；P0 = 0 | ▶ 首轮否决（P0=1）→ 第二轮 **P0=0**（正反双证）→ 留 N1/N2 两条 P1，已修；第三轮定点复核中 |
 | **G1** | **交第一次确认，停下等签认** | 用户原话留痕 | ⏳ |
 | M6 | 开发版移植（dsh 六件 + public + 检查链 + 单测） | `npm run check` 全绿 + parity + probe:dev | ⏳ 未授权 |
