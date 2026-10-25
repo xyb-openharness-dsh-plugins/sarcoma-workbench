@@ -22,7 +22,7 @@
 | 层 | 数量 | 命令 |
 | --- | --- | --- |
 | 交互红线 HVT X1–X4（含 IP1–IP10 落点） | **102/102** | `NODE_OPTIONS= node scripts/probe-interaction.mjs` |
-| 原型四必查件（排版 / 字号三档 / 窄宽 / 一图秀 C1–C12） | **28/28** | `NODE_OPTIONS= node scripts/probe-prototype.mjs` |
+| 原型四必查件（排版 / 字号三档 / 窄宽 + **768 逐页签 36/36** / 一图秀 C1–C12） | **29/29** | `NODE_OPTIONS= node scripts/probe-prototype.mjs` |
 | 整页视图 A1–A10（返回/关闭两层、Esc 各退一层、焦点与滚动还原） | **13/13** | `NODE_OPTIONS= node scripts/probe-page-view.mjs` |
 | 疾病概要「?」（四段齐全、每段有来源、趋势段无禁止词） | **9/9** | `NODE_OPTIONS= node scripts/probe-disease-primer.mjs` |
 | 闸门自测（注入缺陷必须被抓到） | 注入 4 → 命中 **4/4** | 加 `--self-test` |
