@@ -92,7 +92,7 @@ small{font-size:calc(11.5px * var(--tz));color:var(--muted)}
 .prototype-bar b{font-weight:600}
 
 /* ---------- 布局 ---------- */
-.work-grid{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:16px;align-items:start;padding:0 22px}
+.work-grid{display:grid;grid-template-columns:minmax(0,1fr) var(--agent-w,372px);gap:16px;align-items:start;padding:0 22px}
 .work-grid.agent-closed{grid-template-columns:minmax(0,1fr)}
 #main{padding:24px 0 48px;min-width:0;max-width:1240px;width:100%;margin:0 auto}
 .footer{padding:14px 22px;border-top:1px solid var(--line);font-size:calc(11.5px * var(--tz));color:var(--muted);display:flex;justify-content:space-between;gap:12px;background:#fff;flex-wrap:wrap}
@@ -364,7 +364,7 @@ dialog::backdrop{background:rgba(42,26,54,.36);backdrop-filter:blur(2px)}
 
 /* ---------- 响应式 ---------- */
 @media (max-width:1180px){
-  .work-grid{grid-template-columns:minmax(0,1fr)}
+  .work-grid{grid-template-columns:minmax(0,1fr);--agent-w:0px}
   .agent-dock{position:static;max-height:none;order:2}
   .dash-cols{grid-template-columns:minmax(0,1fr)}
   .overview{grid-template-columns:minmax(0,1fr)}

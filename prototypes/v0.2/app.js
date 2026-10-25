@@ -90,7 +90,11 @@ const metric = (k) => M()[k];
 function resetProfileState() {
   state.view = 'dashboard';
   state.sub = {};
-  state.sel = (P().dash_keys || []).slice(0, 3);
+  // 默认 3 条数值线 + 1 条分类序列：文案与「最多 4 条」的选择器上限对齐。
+  // 早先只取前 3 个 dash_keys，画出来全是数值线，与看板文案不符（P3 探针抓到）。
+  const dk = (P().dash_keys || []).slice(0, 3);
+  const firstQual = (P().metrics || []).find((m) => m.kind === 'qual');
+  state.sel = firstQual ? dk.concat(firstQual.key) : dk;
   state.range = 'all';
   state.zoom = 100;
   state.pin = null;
@@ -98,7 +102,11 @@ function resetProfileState() {
   state.intake = { step: 1, decisions: {} };
   state.tess = { limb: '下肢', answers: [] };
 }
-state.sel = (D.A.dash_keys || []).slice(0, 3);
+state.sel = (() => {
+  const dk = (D.A.dash_keys || []).slice(0, 3);
+  const q = (D.A.metrics || []).find((m) => m.kind === 'qual');
+  return q ? dk.concat(q.key) : dk;
+})();
 
 /* ---------------- 通用片段 ---------------- */
 const pill = (t, c = '') => `<span class="pill ${c}">${esc(t)}</span>`;
@@ -1324,7 +1332,9 @@ document.addEventListener('click', (e) => {
   const sizeBtn = t.closest('[data-agent-size]');
   if (sizeBtn) {
     const w = { narrow: '300px', std: '372px', wide: '500px' }[sizeBtn.dataset.agentSize];
-    $('#work-grid').style.gridTemplateColumns = `minmax(0,1fr) ${w}`;
+    // 用自定义属性而不是内联 gridTemplateColumns：内联声明会盖住 ≤1180px 的媒体查询，
+    // 390 宽 + 500px 面板时主栏被压成 0px（P5 探针实测）。
+    $('#work-grid').style.setProperty('--agent-w', w);
     toast('面板宽度：' + sizeBtn.textContent);
     return;
   }
