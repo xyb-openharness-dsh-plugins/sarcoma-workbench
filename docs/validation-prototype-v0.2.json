@@ -137,7 +137,37 @@
       186
     ],
     "picks": 3,
-    "selLen": 2
+    "selLen": 2,
+    "emptyWindow": [
+      {
+        "range": "3m",
+        "svg": true,
+        "points": 2,
+        "empty": false,
+        "widen": true
+      },
+      {
+        "range": "6m",
+        "svg": true,
+        "points": 2,
+        "empty": false,
+        "widen": true
+      },
+      {
+        "range": "12m",
+        "svg": true,
+        "points": 2,
+        "empty": false,
+        "widen": true
+      },
+      {
+        "range": "all",
+        "svg": true,
+        "points": 6,
+        "empty": false,
+        "widen": true
+      }
+    ]
   },
   "trialMatch": {
     "ok": true,

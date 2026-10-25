@@ -189,8 +189,31 @@ def main():
                    picks: document.querySelectorAll('[data-chart-toggle]').length,
                    selLen: (window.__SARCO_PAL__.state.chartSel || []).length };
         }""")
+        # R2/R8：任何时间窗都只有两种合法终态 ——
+        #   ①有图且至少一个点；②没有图但有"这个时间窗里没有…"空态 + 放宽入口。
+        # 绝不允许"空 <svg>"（让人以为加载失败）。逐个窗口验，不只验一个。
+        empty_window = page.evaluate("""() => {
+          const out = [];
+          for (const r of ['3m', '6m', '12m', 'all']) {
+            const btn = document.querySelector(`[data-chart-range="${r}"]`);
+            if (!btn) { out.push({ range: r, missing: true }); continue; }
+            btn.click();
+            const svg = document.querySelector('svg.chart');
+            const pts = document.querySelectorAll('svg.chart circle.pt').length;
+            const emp = document.querySelector('.empty');
+            const widen = !!document.querySelector('[data-chart-range="all"]');
+            out.push({ range: r, svg: !!svg, points: pts,
+                       empty: !!(emp && emp.innerText.includes('时间窗')), widen });
+          }
+          return out;
+        }""")
+        chart_ok_windows = all(
+            (w.get("svg") and w.get("points", 0) > 0) or (w.get("empty") and w.get("widen"))
+            for w in empty_window
+        ) and not any(w.get("missing") for w in empty_window)
         chart_ok = (chart["lines"] >= 1 and "不可比" in chart["aria"]
-                    and chart["selLen"] <= 4 and chart["picks"] >= 2)
+                    and chart["selLen"] <= 4 and chart["picks"] >= 2
+                    and chart_ok_windows)
 
         # --- 5d. 35 号：建档三态 + 匹配无结论词 ---
         page.goto(PROTO.as_uri() + "#trials/0")
@@ -241,7 +264,7 @@ def main():
         "widths": width_reports,
         "hiddenRule": hidden_ok,
         "metricCards3d": {"ok": cards_ok, **cards},
-        "oneChart": {"ok": chart_ok, **chart},
+        "oneChart": {"ok": chart_ok, **chart, "emptyWindow": empty_window},
         "trialMatch": {"ok": trial_ok, "bio": bio, "match": match},
         "consoleErrors": console_errors[:5],
         "pageErrors": page_errors[:5],

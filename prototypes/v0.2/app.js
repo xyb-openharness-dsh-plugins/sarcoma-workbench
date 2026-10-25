@@ -763,6 +763,8 @@ function viewOneChart() {
   const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
   const from = state.chartRange === 'all' ? null : chartRangeFrom(state.chartRange);
   const to = null;
+  // 窗口内到底有没有点：用 windowRows 判，不能用 s.rows.length（那是全期条数）。
+  const windowCount = series.reduce((n, s) => n + M.windowRows(s.rows, from, to).length, 0);
   const paths = series.map((s, i) => {
     const rows = M.windowRows(s.rows, from, to);
     const x = (date) => pad.l + (rows.length <= 1 ? plotW * 0.5 : (new Date(date) - new Date(rows[0].date)) / ((new Date(rows[rows.length - 1].date) - new Date(rows[0].date)) || 1) * plotW);
@@ -800,6 +802,8 @@ function viewOneChart() {
         <div class="card-head"><h2>时间轴</h2><span class="muted">${series.length} 条线 · ${from ? '近 ' + state.chartRange.replace('m', ' 月') : '全部时间'}</span></div>
         ${series.length === 0
       ? empty('还没选指标', '左侧最多选 4 条。先选一条看看，再加第二条。')
+      : windowCount === 0
+        ? empty('这个时间窗里没有所选指标的数据', '不是没有记录，是这段时间内这几条都没有采样。改看"全部"，或把时间窗放宽。') + `<div class="actions" style="margin-top:8px"><button class="soft" data-chart-range="all">改看全部时间</button></div>`
       : `<div class="chart-wrap"><svg class="chart" viewBox="0 0 ${W} ${H}" role="img"
             aria-label="多指标时间轴，共 ${series.length} 条线；每条按该指标自身全部记录范围缩放，各指标数值不可比">
           <line class="axis" x1="${pad.l}" y1="${pad.t + plotH}" x2="${W - pad.r}" y2="${pad.t + plotH}"/>
