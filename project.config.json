@@ -1,0 +1,18 @@
+{
+  "packageName": "@xyb-community/sarcoma-workbench",
+  "title": "小肉宝 SarcoPal · 软组织肉瘤患者工作台",
+  "repository": "https://github.com/xyb-openharness-dsh-plugins/sarcoma-workbench",
+  "description": "本机优先的软组织肉瘤（STS）病理亚型档案、部位分轨随访、局部与全身治疗线并行、影像基线锚点与试验检索工作台",
+  "slug": "sarcoma-workbench",
+  "layoutMode": "business-first",
+  "businessWidth": 0.65,
+  "targetUsers": "软组织肉瘤患者本人与家属代记者（双主体）：肢体/腹膜后/头颈/躯干部位，覆盖术后随访期与复发后换线期",
+  "scenario": "拿到一份写满亚型、分级与分子结果的病理报告却不知道该怎么记；术后每三个月复查 MRI 与胸部 CT，分不清哪次是基线；手术、放疗、化疗与临床试验常常同期并行而不是排队；复发转移后要换线，希望把整条时间线摊在医生面前",
+  "coreFlow": [
+    "录入或导入病理报告，建立亚型档案卡并保留医生原文与出处",
+    "记录治疗事件（手术/放疗/全身治疗/临床试验），按并行轨道挂折叠卡",
+    "记录影像复查，锚定基线，并列对照影像报告原文表述",
+    "复诊前摊开一页时间线，按部位与治疗线回看并准备问题"
+  ],
+  "completion": "患者能在一次复诊前用一页时间线说清「我的亚型是什么、做过哪些局部与全身治疗、哪次影像是对照基线、这次该带什么去问」"
+}

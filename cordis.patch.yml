@@ -1,0 +1,16 @@
+- insert:
+    - id: sarcoma-workbench-main
+      name: "@xyb-community/sarcoma-workbench"
+      config:
+        root: !!js dshHomePath('sarcoma-workbench')
+
+# 把服务端入口插进 Harness 的插件树（workbench-standard §3.3）。
+#
+# 三条硬规则：
+# 1. name 必须写 npm 包名；写相对路径或绝对路径 Node 解析不到。
+# 2. 空文件或纯注释文件会导致启动失败——没有条目时写 `[]`；条目必须在文件最前面
+#    （scripts/check-workbench-package.mjs 用 `^\s*-\s+insert:` 判定），注释一律放条目后。
+# 3. config.root 决定本工作台的本地数据落点（SQLite/导入件），必须随包声明；
+#    缺这一条装机后取不到根，服务能起、/health 返回 200，但所有列表为空（静默空库）。
+#
+# root 的 slug 与 package.json 的 name 同源，由 scripts/check-host-contract.mjs 比对，别手改这里。
