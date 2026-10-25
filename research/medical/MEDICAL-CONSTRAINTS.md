@@ -30,9 +30,9 @@
 - 来源：*Soft Tissue and Bone Tumours — WHO Classification of Tumours, 5th Edition, Volume 3* https://publications.iarc.fr/Book-And-Report-Series/Who-Classification-Of-Tumours/Soft-Tissue-And-Bone-Tumours-2020 2020（IARC 官方书目页）
 - 核验：**已核**
 
-### 1.2 结构：12 个软组织类别 + 1 个单列章节（已核）
+### 1.2 结构：11 个软组织类别 + 1 个单列章节（已核）
 
-- **结论**：第 1 章"Soft tissue tumours"按分化方向分为 12 类：脂肪细胞性、成纤维细胞/肌成纤维细胞性、所谓纤维组织细胞性、血管性、血管周细胞性（pericytic）、平滑肌、骨骼肌、胃肠间质瘤（GIST）、软骨-骨性、外周神经鞘、分化不确定的肿瘤、未分化肉瘤；第 2 章把"未分化小圆细胞肉瘤"单列（Ewing 肉瘤、EWSR1-non-ETS、CIC 重排、BCOR 改变）。
+- **结论**：第 1 章 "Soft tissue tumours" 按分化方向设 **11 个类别**：脂肪细胞性、成纤维细胞/肌成纤维细胞性、所谓纤维组织细胞性、血管性、血管周细胞性（pericytic）、平滑肌、骨骼肌、胃肠间质瘤（GIST）、软骨-骨性、外周神经鞘、分化不确定的肿瘤（"未分化肉瘤"放在这最后一类里）。第 2 章把"未分化小圆细胞肉瘤"单列（Ewing 肉瘤、EWSR1-non-ETS、CIC 重排、BCOR 改变）。
 - 来源：*Soft Tissue and Bone Tumours* 官方目录 PDF https://publications.iarc.fr/download/ToC_STB5.pdf 2020（第 1–2 章章名与页码）
 - 核验：**已核**
 
@@ -44,7 +44,7 @@
 - **结论 B**：文献中最常被引用的口径是"软组织恶性肿瘤可再分为**约 70 个亚型**"。这是综述作者的概括，不是 WHO 的官方计数。
 - 来源：Sbaraglia M, Bellan E, Dei Tos AP. *The 2020 WHO Classification of Soft Tissue Tumours: news and perspectives.* Pathologica 2021;113(2):70–84（"subclassified in approximately 70 subtypes"）https://pmc.ncbi.nlm.nih.gov/articles/PMC8167394/ 2021
 - 核验：**已核**（原文逐字）；**二手**（综述，非 WHO 原文）
-- **结论 C（给工作台的口径建议）**：界面写"WHO 2020 将软组织肿瘤分为 12 类、文献常称约 70 种恶性亚型；本书不设单一亚型总数"，比写一个精确数字更稳。
+- **结论 C（给工作台的口径建议）**：界面写"WHO 2020 将软组织肿瘤分为 11 类（另单列未分化小圆细胞肉瘤一章），文献常称约 70 种恶性亚型；WHO 本身不设单一亚型总数"，比写一个精确数字更稳。注意：把第 2 章并入计数时，中文材料常写"12 类"，两种说法都能见到，界面应说明口径。
 
 ### 1.4 患者会遇到的成人常见亚型 → WHO 2020 条目与页码（已核）
 
@@ -171,8 +171,8 @@
 - 核验：**已核**
 - 旁证：UK guidelines for the management of soft tissue sarcomas, *Clin Sarcoma Res* 2016;6:20，Table 1 https://pmc.ncbi.nlm.nih.gov/articles/PMC5109663/ 2016
 - 核验：**已核**
-- **冲突（轻微，需在界面留意）**：UK 2016 表 1 排版把三级写成 "Grade 1 = 2 or 3; Grade 2 = 4 or 5; Grade 3 = 6"（G3 只写 6），与 PDQ/AJCC 的 "6, 7, or 8" 不完全一致。按 AJCC 第 8 版口径应写 **6–8**；UK 那处疑为排版截断。
-- 来源：同上两条并列；核验：**冲突已记录**
+- **冲突（表述差异，非实质分歧）**：UK 2016 表 1 的三级原文写作 "Grade 1 = 2 or 3; Grade 2 = 4 or 5; Grade 3 = 6"（G3 只到 6；已核对原文 XML，非本次抽取丢字），与 PDQ/AJCC 的 "6, 7, or 8" 不一致。按 AJCC 第 8 版口径应写 **6–8**；UK 该处疑为原文笔误，界面不要照抄"G3=6"。
+- 来源：同上两条并列；核验：**冲突已记录**（以 AJCC 8 / PDQ 为准）
 
 ### 3.3 患者端常见写法（已核）
 
@@ -222,7 +222,7 @@
 | 帕唑帕尼 pazopanib | NCCN Guide 1「后线」；Guide 2 用于 ASPS、孤立性纤维性肿瘤、硬纤维瘤 | **未核实** |
 | 曲贝替定 trabectedin | NCCN Guide 1「后线」，原文注 "especially for liposarcoma and leiomyosarcoma" | **未核实** |
 | 艾立布林 eribulin | NCCN Guide 1「后线」，原文注 "especially for liposarcoma" | **未核实** |
-| 安罗替尼 anlotinib | **NCCN 2025 患者版全文检索不到该词**（2026-10-25 检索）；不能据此推断专业版是否收录 | **未核实** |
+| 安罗替尼 anlotinib | **NCCN 2025 患者版全文检索不到该词**（2026-10-25 检索）；不能据此推断专业版是否收录。该词在中国患者语境中常见，但本次未取得任何指南/批件原文，故只作为"待补证词条"保留 | **未核实** |
 | tazemetostat | PDQ Table 9 列为上皮样肉瘤（epithelioid sarcoma）用药；**NCCN 2025 患者版全文检索不到该词** | **未核实** |
 | 伊马替尼 imatinib（DFSP） | NCCN Guide 2 "DFSP with fibrosarcomatous transformation — Imatinib"；PDQ Table 9 "Dermatofibrosarcoma protuberans — Imatinib" | **未核实** |
 | NTRK 抑制剂 | NCCN Guide 1「NTRK 融合阳性肉瘤专用」：larotrectinib、entrectinib、repotrectinib；PDQ Table 9：larotrectinib | **未核实** |
@@ -356,7 +356,7 @@ CAP 模板 Table 1 标题为 "Subset of Soft Tissue Tumors that Carry Diagnostic
 | INI1 / SMARCB1（缺失） | "Epithelioid sarcoma — SMARCB1 deletion"；"Extrarenal rhabdoid tumor — SMARCB1 deletion" | 上皮样肉瘤 / 肾外横纹肌样瘤 |
 | EZH2 | **不在 CAP 表 1 中**（表 1 只列诊断性分子发现） | 见下条 |
 
-- 来源：CAP 同上，Table 1（pp. 17–19 区段）2024
+- 来源：CAP 同上，Explanatory Notes → "WHO Classification of Tumors" → Table 1（PDF 第 17 页起，跨 2 页）2024
 - 核验：**已核**
 - **EZH2 的口径提醒**：EZH2 在文献里主要作为**上皮样肉瘤（INI1 缺失型）的药物治疗靶点**出现，不是诊断字段；诊断字段是 SMARCB1/INI1 缺失。本次未取得 EZH2 说明书的逐字原文，故"EZH2 = 靶点"这一句标 **未核实（二手语境）**。旁证（药物存在性）：PDQ Table 9 将 tazemetostat 列于上皮样肉瘤 https://www.cancer.gov/types/soft-tissue-sarcoma/hp/adult-soft-tissue-treatment-pdq 2025
 - 核验：**未核实**
