@@ -597,6 +597,7 @@ async function p5(page, base) {
   await page.setViewport({ width: 768, height: 1024 })
   await sleep(90)
   const tabOverflow = []
+  const tabResults = []
   let tabCount = 0
   for (const view of views) {
     await clickView(page, view)
@@ -611,11 +612,21 @@ async function p5(page, base) {
         iw: innerWidth,
         label: document.querySelector('#main .subnav [aria-selected="true"]')?.textContent?.trim() || ''
       }))
-      if (m.body > m.iw + 1 || m.html > m.iw + 1) tabOverflow.push(`${view}/${m.label}: body=${m.body} html=${m.html} > ${m.iw}`)
+      const ok = !(m.body > m.iw + 1 || m.html > m.iw + 1)
+      tabResults.push({ view, label: m.label || `#${i}`, ok, body: m.body, html: m.html, iw: m.iw })
+      if (!ok) tabOverflow.push(`${view}/${m.label}: body=${m.body} html=${m.html} > ${m.iw}`)
     }
   }
-  check('P5-tab', `768px 逐页签无横向溢出（${tabCount} 个页签全量）`, tabOverflow.length === 0,
-    tabOverflow.length ? tabOverflow.slice(0, 3).join('；') : `12 页 × 各页签共 ${tabCount} 个，均为 768`)
+  /* 每个 (页, 页签) 一条断言，不合并成一条总数（独立评审 N7）：
+     原来 12 页 × 36 页签压成 1 条，等于 432 次测量罩在一个标签下——
+     红了只知道「12 页里有一页之一宽了」，得人肉二分。断言的分母要和它测量的事情对齐。 */
+  for (const r of tabResults) {
+    check(`P5-tab:${r.view}/${r.label}`, `768px「${r.view} › ${r.label}」无横向溢出`,
+      r.ok, `body=${r.body} html=${r.html} iw=${r.iw}`)
+  }
+  check('P5-tab-sum', `768px 逐页签：${tabCount} 个页签全量无横溢（逐条见 P5-tab:＊）`,
+    tabOverflow.length === 0,
+    tabOverflow.length ? `${tabOverflow.length} 条失败：${tabOverflow.slice(0, 3).join('；')}` : `12 页 × 各页签共 ${tabCount} 个`)
 
   check('P5-v', '三档宽度下「竖排单字」为 0', verticalFails.length === 0,
     verticalFails.length ? verticalFails.slice(0, 3).join('；') : '390/768/1280 各 12 页均未发现')

@@ -8,9 +8,10 @@
 | 项 | 内容 |
 | --- | --- |
 | HTML 实际路径 | `prototypes/v0.2/index.html`（`file://` 双击可开，不需要起服务） |
+| 提交（可核对） | 原型目录最后一次提交见 `git log -1 --format=%h -- prototypes/`；该提交之后 `git status --short prototypes/` 为空即与本文一致 |
 | 版本 | **0.2.1**（`VERSION` / `package.json` / `app.js:APP_INFO` 三处一致；顶栏徽章与页脚由 `APP_INFO` 渲染时覆盖，已无写死副本） |
-| 提交 | `acf7d39`（含 P0-1 修复） |
-| SHA-256 | `index.html` `1361052a…e8048876` ／ `app.js` `5dde457e…152206b01` ／ `demo-data.js` `fce2af8a…9ea995` ／ `primer-data.js` `beb4bb9f…14b8e83d` |
+| 提交 | 原型文件最后一次改动在第 6 行那组指纹对应的提交（下表按内容算，可自证）；此后只改探针与文档，不动 `prototypes/` |
+| SHA-256 | `index.html` `3afd6ccd…d13f650b` ／ `app.js` `e93d0829…733cd67c2` ／ `demo-data.js` `fce2af8a…19eaea995` ／ `primer-data.js` `beb4bb9f…614b8e83d`（`shasum -a 256 prototypes/v0.2/*` 可复算；评审 N2 指出旧表记的是 `acf7d39` 的值，已按当前文件重算） |
 | 预览环境 | macOS arm64 · Chrome 145 · 视口 1280 / 1024 / 768 / 390 四档；截图见 `docs/shots/`（25 张） |
 | 模拟数据与真实功能界限 | **全部为虚构演示档案**（A 肢体原发 / B 腹膜后复发），由 `demo/build-demo-data.mjs` 单一来源生成；不读写真实文件、不调用模型或宿主 API、不连数据库 |
 | 当前 SPEC / 场景 / 数据模型版本 | `SPEC.md` v0.1 · `SCENARIOS.md` v0.1 · `SCHEMA` 冻结于 `7641895`（27 表） |
@@ -22,7 +23,7 @@
 | 层 | 数量 | 命令 |
 | --- | --- | --- |
 | 交互红线 HVT X1–X4（含 IP1–IP10 落点） | **102/102** | `NODE_OPTIONS= node scripts/probe-interaction.mjs` |
-| 原型四必查件（排版 / 字号三档 / 窄宽 + **768 逐页签 36/36** / 一图秀 C1–C12） | **29/29** | `NODE_OPTIONS= node scripts/probe-prototype.mjs` |
+| 原型四必查件（排版 / 字号三档 / 窄宽 / 一图秀 C1–C12）+ **768 逐页签 36 条逐条断言** | **65/65** | `NODE_OPTIONS= node scripts/probe-prototype.mjs` |
 | 整页视图 A1–A10（返回/关闭两层、Esc 各退一层、焦点与滚动还原） | **13/13** | `NODE_OPTIONS= node scripts/probe-page-view.mjs` |
 | 疾病概要「?」（四段齐全、每段有来源、趋势段无禁止词） | **9/9** | `NODE_OPTIONS= node scripts/probe-disease-primer.mjs` |
 | 闸门自测（注入缺陷必须被抓到） | 注入 4 → 命中 **4/4** | 加 `--self-test` |

@@ -29,9 +29,18 @@ import { DatabaseSync } from 'node:sqlite';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const OUT_DIR = join(ROOT, 'research', 'sarcoma');
+/* 采集工具的根目录只从环境变量取，不写本机绝对路径（评审 P2-3 / N4）。
+   写死路径的后果是换机报 ENOENT，而下一个人会以为「采集源挂了」而不是「你没配变量」。
+   这个脚本只在 M3 采数据时手动跑，不参与 check 链，所以缺变量时直接报错退出是对的：
+   采集失败必须是显式的，不能悄悄产出空 jsonl。 */
 const TOOL_ROOT = process.env.UNIFIED_TRIAL_MCP_ROOT
   ? resolve(process.env.UNIFIED_TRIAL_MCP_ROOT)
-  : '/Users/qinxiaoqiang/Downloads/unified_search_trials';
+  : null;
+if (!TOOL_ROOT) {
+  console.error('缺少 UNIFIED_TRIAL_MCP_ROOT：设为 unified_search_trials 目录的绝对路径后重跑。\n' +
+    '例：UNIFIED_TRIAL_MCP_ROOT=~/Downloads/unified_search_trials node scripts/fetch-sarcoma-trials-2026.mjs');
+  process.exit(2);
+}
 
 const JSONL_PATH = join(OUT_DIR, 'trials-2026.jsonl');
 const SQLITE_PATH = join(OUT_DIR, 'sarcoma_cancer_trials_2026.sqlite');

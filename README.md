@@ -5,7 +5,7 @@
 **当前状态分三块，不要混读**：
 
 - **设计包（已交付）**：需求 [BRIEF](docs/BRIEF.md)、规格 [SPEC](docs/SPEC.md)、分期与分期组口径 [DIFF-MATRIX](docs/DIFF-MATRIX.md)、临床数据覆盖 [CLINICAL-DATA-2026](docs/CLINICAL-DATA-2026.md)、交互路径 [INTERACTION-DESIGN](docs/INTERACTION-DESIGN.md) 与 [28-INTERACTION-PATH-DESIGN](docs/28-INTERACTION-PATH-DESIGN.md)、独立评审 [DESIGN-REVIEW](docs/DESIGN-REVIEW.md)。
-- **HTML 原型（已交付，`prototypes/v0.2/`，v0.2.1）**：12 个一级页 + 整页视图 + 两套演示档案（A 肢体/原发、B 腹膜后/复发），`file://` 双击即开。交互红线 HVT X1–X4 走查 **102/102**（`node scripts/probe-interaction.mjs`，自测 4/4 命中），原型四必查件 29/29（含 768 宽 36 个页签全量），疾病概要 9/9。
+- **HTML 原型（已交付，`prototypes/v0.2/`，v0.2.1）**：12 个一级页 + 整页视图 + 两套演示档案（A 肢体/原发、B 腹膜后/复发），`file://` 双击即开。交互红线 HVT X1–X4 走查 **102/102**（`node scripts/probe-interaction.mjs`，自测 4/4 命中），原型四必查件 65/65（含 768 宽 36 个页签逐条断言），疾病概要 9/9。
 - **M6–M8（未做）**：真实业务库、装机包、push 与家族回流都还没开始。仓库里没有 `schema/` 落地表、没有 `.tgz` 产物、多数远端为空。**G1 尚未签认**——原型是待评审材料，不是已确认版本。
 
 初始化后先将 [项目设计提示词](docs/DESIGN-PROMPT.md) 交给当前Agent；它应展示实际路径并以已有用户/场景/流程素材对齐设计者、研究与取舍原则。癌种项目另有 [完整专用提示词](prompts/NEW-CANCER-WORKBENCH.md)。先读 [AGENTS](AGENTS.md)。

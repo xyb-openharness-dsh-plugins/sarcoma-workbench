@@ -392,6 +392,13 @@ function vDashboard() {
   const lastVisit = [lastImg && lastImg.d, ...p.questions.map((q) => q.d)].filter(Boolean).sort().slice(-1)[0];
   const today = p.window_end;
   const stageTxt = p.staging.length ? txt(p.staging[0].tnm) : stageEmptyLabel(p);
+        /* 左边那句说明必须和右边 pill 说同一件事（评审 N1）：原来这里写死「界面显示「未回报」」，
+           而 pill 已经是「该部位未定义分期组」，一左一右互相打脸——用户第一屏就看见。 */
+        const stageNote = p.staging.length
+          ? p.staging[0].note
+          : (stageEmptyLabel(p) === '该部位未定义分期组'
+            ? '这个部位在 AJCC 第 8 版里没有定义分期组，不是报告还没出'
+            : '还没有分期记录，报告未回报时不补期别')
   const tasks = [
     ['tumor', 2, '补一次分期记录', '本档案的分期行：' + (p.staging.length ? '已记录 1 行' : stageEmptyLabel(p)), '①'],
     ['labs', 1, '看一眼一图秀', '默认 3 条数值线 + 1 条分类序列', '②'],
@@ -436,7 +443,7 @@ function vDashboard() {
       <div class="card"><div class="card-head"><div><h2>档案位置</h2><p>事实层四个词分开摆</p></div></div>
         <div class="mini-list">
           <div class="mini-item"><div><b>亚型</b><p>${esc(txt(p.pathology[p.pathology.length - 1].subtype))}</p></div><span>病理报告</span></div>
-          <div class="mini-item"><div><b>分期</b><p>${esc(p.staging.length ? p.staging[0].note : '本档案没有分期记录行，界面显示「未回报」')}</p></div><span>${esc(stageTxt)}</span></div>
+          <div class="mini-item"><div><b>分期</b><p>${esc(stageNote)}</p></div><span>${esc(stageTxt)}</span></div>
           <div class="mini-item"><div><b>分级</b><p>FNCLCC 三组件</p></div><span>${esc(p.grade.length ? p.grade[0].grade : '—')}</span></div>
           <div class="mini-item"><div><b>部位</b><p>${esc(p.site[p.site.length - 1].size_text)}</p></div><span>${esc(p.site[p.site.length - 1].site)}</span></div>
         </div>

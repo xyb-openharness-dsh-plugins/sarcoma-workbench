@@ -704,6 +704,21 @@ async function x3(page, base) {
     stageB.includes('该部位 AJCC 8 未定义分期组') && !/未回报/.test(stageB.replace(/未回报[^\n]*分期组/g, '')),
     stageB.includes('该部位 AJCC 8 未定义分期组') ? '文案正确' : `未见该句；片段=${stageB.slice(0, 60)}`)
 
+  /* X3j-b：同一条口径必须在**看板**上也成立（评审 N1 的回归闸）。
+     原来只看 tumor/2 页签，看板「档案位置」卡左边写死「界面显示「未回报」」、
+     右边 pill 写「该部位未定义分期组」，一左一右互相打脸——而看板是用户第一屏。
+     断言写法：那一行卡片的整块文本里，「未回报」与「未定义分期组」不得同时出现。 */
+  await clickNav(page, 'dashboard')
+  const dashStage = await page.evaluate(() => {
+    const items = [...document.querySelectorAll('#main .mini-item')]
+    const hit = items.find((el) => (el.querySelector('b')?.textContent || '').trim() === '分期')
+    return hit ? hit.innerText.replace(/\n/g, ' ') : ''
+  })
+  const both = dashStage.includes('未回报') && dashStage.includes('未定义分期组')
+  check('X3j-b', '看板「档案位置」卡的分期行不自相矛盾（未回报 / 未定义分期组 不同时出现）',
+    dashStage.length > 0 && !both,
+    dashStage ? `「${dashStage.slice(0, 80)}」` : '看板上找不到「分期」行')
+
   await setProfile(page, 'A')
   await clickNav(page, 'tumor')
   await clickTabIndex(page, 2)
