@@ -116,7 +116,12 @@ small{font-size:calc(11.5px * var(--tz));color:var(--muted)}
 .agent-card pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:calc(11.5px * var(--tz))/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink-2)}
 .agent-quick{display:flex;gap:6px;flex-wrap:wrap}
 .agent-quick button{font-size:calc(11.5px * var(--tz));min-height:32px;padding:4px 9px;border-radius:16px}
-.agent-foot{padding:10px 14px;border-top:1px solid var(--line);background:#FCFAFD;display:flex;gap:7px;flex-wrap:wrap}
+.agent-foot{padding:10px 14px;border-top:1px solid var(--line);background:#FCFAFD;display:flex;flex-direction:column;gap:7px}
+.agent-input{display:flex;flex-direction:column;gap:6px}
+.agent-input textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:44px;border:1px solid var(--line-strong);border-radius:10px;padding:8px 10px;font-family:inherit;font-size:calc(12px * var(--tz));line-height:1.6;background:#fff}
+.agent-input textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.agent-input .primary{align-self:flex-end}
+.agent-foot-actions{display:flex;gap:7px;flex-wrap:wrap}
 .agent-foot button{font-size:calc(11.5px * var(--tz));min-height:34px;padding:5px 10px}
 .agent-check{display:flex;flex-direction:column;gap:3px;font-size:calc(11px * var(--tz));margin-top:6px}
 .agent-check .pass{color:var(--teal)}

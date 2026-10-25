@@ -884,6 +884,31 @@ function pvDef(key, title, crumb, render) {
   return { key, title, crumb, render };
 }
 
+/* TESS 正文单独成函数：切肢体时要重建 .pv-body，render() 不碰它。 */
+function pvTessBody() {
+      const existing = P().tess[0];
+      // TESS 下肢 30 题 / 上肢 29 题：写死 30 会让「上肢 29 题」这个事实与画面打架
+      const total = state.tess.limb === '上肢' ? 29 : 30;
+      const answers = state.tess.answers.length === total ? state.tess.answers : Array(total).fill(null);
+      state.tess.answers = answers;
+      return `<div class="pv-inner">
+        <section class="pv-section"><h2>分肢体</h2>
+          <div class="tess-limb" role="group" aria-label="选择肢体">
+            <button type="button" data-tess-limb="下肢" aria-pressed="${state.tess.limb === '下肢'}">下肢 · 30 题</button>
+            <button type="button" data-tess-limb="上肢" aria-pressed="${state.tess.limb === '上肢'}">上肢 · 29 题</button>
+            <span class="pill line">题面文本未内置（TESS 中文版授权待核）</span>
+          </div>
+          <p class="pv-note">原型只演示「逐题原始作答 + 保存」的结构，不复制量表题面。0 = 没有困难，5 = 做不到。</p>
+        </section>
+        <section class="pv-section"><h2>${esc(state.tess.limb)} · 逐题</h2>
+          <div class="tess-list">${answers.map((v, i) => `<div class="tess-item"><span class="q">第 ${i + 1} 题${existing && existing.limb === state.tess.limb && existing.answers[i] != null && v == null ? '（已记录：' + existing.answers[i] + '）' : ''}</span>
+            <span class="tess-scale" role="group" aria-label="第 ${i + 1} 题">${[0, 1, 2, 3, 4, 5].map((n) => `<label><input type="radio" name="t${i}" value="${n}" data-tess-i="${i}" ${v === n ? 'checked' : ''}>${n}</label>`).join('')}</span></div>`).join('')}</div>
+        </section>
+        <div class="tess-save"><button type="button" class="pv-btn" data-action="tess-save">保存作答</button><p id="tess-status">${state.tess.savedText || (existing ? `已记录 ${existing.answers.filter((x) => x != null).length} 题` : '还没有保存')}</p></div>
+        <p class="pv-note">保存后只显示「已记录 N 题」。不显示总分、不画趋势、不比较两次作答——分数怎么读属于医学判断，这一句需要问你的医生。</p>
+      </div>`;
+}
+
 if (pv) {
   pv.defineAll([
     pvDef('record', '记录详情', '记录详情', (body, api, params) => {
@@ -940,26 +965,7 @@ if (pv) {
       </div>`;
     }),
     pvDef('tess', 'TESS 自评作答', '功能与康复 › TESS 自评', (body) => {
-      const existing = P().tess[0];
-      const total = 30;
-      const answers = state.tess.answers.length === total ? state.tess.answers : Array(total).fill(null);
-      state.tess.answers = answers;
-      body.innerHTML = `<div class="pv-inner">
-        <section class="pv-section"><h2>分肢体</h2>
-          <div class="tess-limb" role="group" aria-label="选择肢体">
-            <button type="button" data-tess-limb="下肢" aria-pressed="${state.tess.limb === '下肢'}">下肢 · 30 题</button>
-            <button type="button" data-tess-limb="上肢" aria-pressed="${state.tess.limb === '上肢'}">上肢 · 29 题</button>
-            <span class="pill line">题面文本未内置（TESS 中文版授权待核）</span>
-          </div>
-          <p class="pv-note">原型只演示「逐题原始作答 + 保存」的结构，不复制量表题面。0 = 没有困难，5 = 做不到。</p>
-        </section>
-        <section class="pv-section"><h2>${esc(state.tess.limb)} · 逐题</h2>
-          <div class="tess-list">${answers.map((v, i) => `<div class="tess-item"><span class="q">第 ${i + 1} 题${existing && existing.limb === state.tess.limb && existing.answers[i] != null && v == null ? '（已记录：' + existing.answers[i] + '）' : ''}</span>
-            <span class="tess-scale" role="group" aria-label="第 ${i + 1} 题">${[0, 1, 2, 3, 4, 5].map((n) => `<label><input type="radio" name="t${i}" value="${n}" data-tess-i="${i}" ${v === n ? 'checked' : ''}>${n}</label>`).join('')}</span></div>`).join('')}</div>
-        </section>
-        <div class="tess-save"><button type="button" class="pv-btn" data-action="tess-save">保存作答</button><p id="tess-status">${state.tess.savedText || (existing ? `已记录 ${existing.answers.filter((x) => x != null).length} 题` : '还没有保存')}</p></div>
-        <p class="pv-note">保存后只显示「已记录 N 题」。不显示总分、不画趋势、不比较两次作答——分数怎么读属于医学判断，这一句需要问你的医生。</p>
-      </div>`;
+      body.innerHTML = pvTessBody();
     }),
     pvDef('chart', '一图秀 · 放大', '化验与指标 › 一图秀', (body) => {
       const [t0, t1] = domain();
@@ -1123,10 +1129,11 @@ function renderProfileChip() {
   $('#profile-name').textContent = p.name;
   $('#profile-btn').setAttribute('aria-label', `切换演示档案：当前 ${p.name}`);
 }
-function setView(k, sub = 0) {
+function setView(k, sub = null) {
   if (!VIEWS[k]) return;
   state.view = k;
-  if (sub) state.sub[k] = sub;
+  // 0 也是合法页签：原来写 `if (sub)` 会把 0 跳过，点导航仍停在上次那个页签
+  state.sub[k] = sub == null ? 0 : sub;
   render();
   window.scrollTo({ top: 0, behavior: 'instant' });
   $('#main').focus({ preventScroll: true });
@@ -1308,7 +1315,9 @@ document.addEventListener('click', (e) => {
   if (tessLimb) {
     state.tess.limb = tessLimb.dataset.tessLimb;
     state.tess.answers = Array(state.tess.limb === '下肢' ? 30 : 29).fill(null);
-    render();
+    // 整页视图里的正文是独立节点，render() 不会重建它——必须自己重画，否则题数不变
+    if (pv && pv.current === 'tess') { const b = t.closest('.pv-body'); if (b) b.innerHTML = pvTessBody(); }
+    else render();
     return;
   }
   const intake = t.closest('[data-intake]');
@@ -1355,8 +1364,17 @@ document.addEventListener('click', (e) => {
   if (a === 'agent-build') { agentBuild(); return; }
   if (a === 'agent-check') { agentCheck(); return; }
   if (a === 'ask') {
+    // IP10：示例问题只**预写**进输入框，不直接发送——点了按钮就出"回复"会让人以为真答了
     const q = actionEl.dataset.q || '';
-    agentSay(`你问：${q}\n\n这一句需要问你的医生。\n\n本台能做的只有：把与这个问题相关的已记录事实按日期列出来，供你带去门诊。`);
+    const box = $('#agent-q');
+    if (box) { box.value = q; box.focus(); }
+    return;
+  }
+  if (a === 'agent-ask') {
+    const box = $('#agent-q');
+    const q = (box && box.value ? box.value : '').trim();
+    if (!q) { toast('先写一句要问的'); if (box) box.focus(); return; }
+    agentSay(`你问：${q}\n\n这一句需要问你的医生。\n\n本原型没有接入模型，这里不会给出判断。能做的只有：把与这个问题有关的已记录事实按日期排一遍，供你带去门诊。`);
     return;
   }
   if (a === 'source') { openDialog('来源', '这条记录出自哪里', `<p style="font-size:calc(12.5px * var(--tz));line-height:1.8">${esc(actionEl.dataset.src)}</p><p class="table-note">原型里所有来源都是演示档案中的机构名 + 日期；真实版本点来源会回到原件。</p>`); return; }

@@ -167,8 +167,15 @@ html.pv-lock{ overflow: hidden; }
     </div>
     <div class="agent-body" id="agent-body"></div>
     <div class="agent-foot">
-      <button type="button" data-action="agent-build">整理本页要点</button>
-      <button type="button" data-action="agent-check">自检判断类措辞</button>
+      <div class="agent-input">
+        <label class="skip" for="agent-q">问一句</label>
+        <textarea id="agent-q" rows="2" placeholder="问一句。本原型不接模型，只回边界句与可带走的清单。"></textarea>
+        <button type="button" class="primary" data-action="agent-ask">发送</button>
+      </div>
+      <div class="agent-foot-actions">
+        <button type="button" data-action="agent-build">整理本页要点</button>
+        <button type="button" data-action="agent-check">自检判断类措辞</button>
+      </div>
     </div>
   </aside>
 </div>

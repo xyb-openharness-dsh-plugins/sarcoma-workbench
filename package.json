@@ -26,7 +26,8 @@
     "pack:check": "npm pack --dry-run",
     "probe:page-view": "node scripts/probe-page-view.mjs",
     "probe:primer": "node scripts/probe-disease-primer.mjs",
-    "probe:prototype": "node scripts/probe-prototype.mjs"
+    "probe:prototype": "node scripts/probe-prototype.mjs",
+    "probe:interaction": "node scripts/probe-interaction.mjs"
   },
   "dsh": {
     "bundle": {

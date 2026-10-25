@@ -14,8 +14,8 @@
  */
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
+import { existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
@@ -88,7 +88,20 @@ async function main() {
   }
 
   const server = await serve()
-  const base = argOf('--url') || `http://127.0.0.1:${PORT}/examples/disease-primer.html`
+  // 默认页面按"本仓哪个存在"自动挑：项目里跑就用自己的原型，脚手架里跑才用示例页。
+  // 早先一律指向 examples/disease-primer.html，项目里没这个文件，`npm run probe:primer`
+  // 直接 2/9，看着像刚改坏的（2026-10-25 肉瘤实测踩到）。
+  const pickPage = () => {
+    const protoRoot = join(ROOT, 'prototypes')
+    if (existsSync(protoRoot)) {
+      const vers = readdirSync(protoRoot).filter((d) => /^v\d/.test(d)).sort().reverse()
+      for (const v of vers) {
+        if (existsSync(join(protoRoot, v, 'index.html'))) return `/prototypes/${v}/index.html`
+      }
+    }
+    return '/examples/disease-primer.html'
+  }
+  const base = argOf('--url') || `http://127.0.0.1:${PORT}${pickPage()}`
   const browser = await puppeteer.launch({
     executablePath: chrome,
     headless: 'new',
