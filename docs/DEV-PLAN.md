@@ -9,10 +9,10 @@
 | # | 阶段 | 判据 | 状态 |
 | --- | --- | --- | --- |
 | M0 | starter init + 基线检查 | `npm run check` → staticPass | ✅ 2026-10-25（`601f9e4`） |
-| M1 | 调研六件套（SPEC / DIFF-MATRIX / PATIENT-FLOW / SCENARIOS / SCHEMA 草案 / DEV-REQUIREMENTS） | 文档本地化，页面树定稿 | ▶ 进行中 |
-| M2 | schema 冻结 | `0001_initial.sql` + `freeze-contract.md`；四契约落地 | ⏳ |
-| M3 | 临床试验采集（多通道） | manifest / jsonl / sqlite 三数一致 | ⏳ |
-| M4 | 演示数据 + HTML demo（`prototypes/v0.2`） | 四必查件 + HVT X 层 + 窄宽；probe 出数字 | ⏳ |
+| M1 | 调研六件套（SPEC / DIFF-MATRIX / PATIENT-FLOW / SCENARIOS / SCHEMA / DEV-REQUIREMENTS） | 文档本地化，页面树定稿 | ✅ 2026-10-25（`9b866f4` + `f78261a`） |
+| M2 | schema 冻结 | `0001_initial.sql` + `freeze-contract.md`；四契约落地 | ✅ 2026-10-25（`7641895`，27 表） |
+| M3 | 临床试验采集（多通道） | manifest / jsonl / sqlite 三数一致 | ▶ 进行中（派工） |
+| M4 | 演示数据 + HTML demo（`prototypes/v0.2`） | 四必查件 + HVT X 层 + 窄宽；probe 出数字 | ▶ 进行中（派工） |
 | M5 | 独立评审（`docs/DESIGN-REVIEW.md`） | 13 项检验单；P0 = 0 | ⏳ |
 | **G1** | **交第一次确认，停下等签认** | 用户原话留痕 | ⏳ |
 | M6 | 开发版移植（dsh 六件 + public + 检查链 + 单测） | `npm run check` 全绿 + parity + probe:dev | ⏳ 未授权 |
