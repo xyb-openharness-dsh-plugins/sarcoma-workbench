@@ -23,13 +23,18 @@ npm run probe:interaction                     # 等价于第一条
 ```
 X1 页面覆盖 1  37 个 (view,sub) × A/B/C 三条路径穷举矩阵；缺失 0、孤儿 0、可达 37/37
 X2 路径走通 1  A 15/15、B 18/18、C 33/33；三条路径末尾都回看板且 scrollY=0
-X3 通道一致 0  显式编辑入口每页 ≤1（12/12）；但「⋯ 更多」0 个、表单 max=13 字段、数字文本框 2 个、AI 无输入框、无「改这一条」
+X3 通道一致 1  6 个写入口全在「⋯ 更多」；手术档案主表单 6 字段、时长/出血量数字键盘；
+               AI 面板有输入框且示例只预写；记录详情有「改这一条」+ 版本链
 X4 无头断言 1  资料整理四步 7/7 pass；候选与事实分表、未核对不入库、拒收零副作用
-→ G2 门槛：未过（X3=0）
+→ G2 门槛：X1–X4 全 1；IP1（文档未签认、前置顺序已被违反）与 IP9 双通道样本仍开，见 docs/INTERACTION-DESIGN.md §四
 ```
 
-正常跑末行：`FAIL  87/94`，退出码 1（94 条检查里 7 条 FAIL：X3b/X3c/X3d/X3e/X3f/X3h 与汇总 X3）。
-自测末行：`FAIL  77/94`，追加输出 `自测：注入 3 个缺陷（删除「加一条问题」/ 候选泄漏进事实卡 / 伪造 2 个手工编辑入口），命中 3/3 条 FAIL：A-09、X3a、X4-03`，退出码 0。
+正常跑末行：`PASS  94/94`，退出码 0。
+自测末行：`FAIL  82/94`，追加输出 `自测：注入 3 个缺陷（删除「加一条问题」/ 候选泄漏进事实卡 / 伪造 2 个手工编辑入口），命中 3/3 条 FAIL：A-09、X3a、X4-03`，退出码 0。
+
+> 首轮（2026-10-25 上午）末行是 `FAIL 87/94`、X3=0；第二轮修完 §四 的六条后转 `PASS 94/94`。
+> 自测的 82/94 比首轮 77/94 高，是因为 X3 本身恢复正常：注入的三个缺陷只该打掉它对应的三条，
+> 不该再连带一屏本来就红的条目。
 
 ## 二、X1 页面覆盖（结论 1）
 
@@ -151,29 +156,35 @@ B-10 需要显式点页签：`setView(k, sub = 0)` 里 `if (sub) state.sub[k] = 
 
 `X-ERR`：全程拦截 `console.error`、`pageerror`、`unhandledrejection`，两类计数均为 0，PASS。
 
-## 四、X3 通道一致（结论 0）
+## 四、X3 通道一致（结论 1）
 
-### 4.1 通过的部分
+### 4.1 逐条结果
 
 | 检查 | 结果 | 证据 |
 | --- | --- | --- |
 | X3a 每页显式手工编辑入口 ≤1 | PASS | 看板=0 · 我的肿瘤=0 · 确诊路径=0 · 手术与伤口=1 · 治疗与线序=0 · 副作用与不适=1 · 功能与康复=1 · 化验与指标=0 · 复查与随访=1 · 影像与报告=0 · 生活与照护=1 · 临床研究=1（合计 6） |
+| X3b 手工入口收在「⋯ 更多」 | PASS | `编辑入口 6 个，其中在「⋯ 更多」内 6 个` |
+| X3c 手工表单 ≤6 字段/张 | PASS | `手术档案 6 个字段：手术日期、术式、机构、切除范围、重建方式、术前诊断`（另 6 项 + 备注在「⋯ 更多字段」里） |
+| X3d 数字输入用键盘组件 | PASS | `文本框数字字段 0 个`；时长/出血量改 `type=number inputmode=numeric` |
+| X3e AI 面板有输入框 + 结构化候选 | PASS | `输入控件=1 固定示例按钮=3 逐项核对页候选=3` |
+| X3f 示例按钮不代替患者发言 | PASS | 点击后 `#agent-output` 内容不含「你问：」（提示词只预写进 `#agent-q`） |
 | X3g 无「不可恢复」文案 | PASS | grep 命中 0 |
+| X3h 有「改这一条」更正入口（删除=更正） | PASS | 命中 2（记录详情按钮 + 对话框标题） |
 
-计数口径：`#main button` 命中 `data-action ∈ {add-cost,add-contact,add-question,add-trial,save-draft,save-cost,save-contact,save-question,save-trial,tess-save}` 或 `data-pv ∈ {surgery,tess}`。命中点在 `app.js:485`（打开手术档案）、`542`（加一个联系人）、`557`（逐题作答）、`635`（加一条问题）、`675`（记一笔花费）、`712`（记一条试验线索）。
+汇总 `X3 ... 全部通过` → **X3 = 1**。
 
-### 4.2 未过的 6 条
+计数口径：`#main button` 命中 `data-action ∈ {add-cost,add-contact,add-question,add-trial,save-*,tess-save}` 或 `data-pv ∈ {surgery,tess}`；`inMenu` 判据是 `.closest('[data-more], .more, [aria-haspopup="menu"]')`。
 
-| 检查 | 结果 | 证据原文 | 定位 |
-| --- | --- | --- | --- |
-| X3b 手工入口收在「⋯ 更多」 | **FAIL** | `编辑入口 6 个，其中在「⋯ 更多」内 0 个` | 6 个入口都是卡片右上或页首的 `button.primary`，全站无 `aria-haspopup="menu"` / `.more` |
-| X3c 手工表单 ≤6 字段/张 | **FAIL** | `手术档案 13 个字段：手术日期、术式、机构、切除范围、重建方式、术前诊断、术后诊断、切缘原文、伤口情况、麻醉方式、手术时长、出血量、备注` | `app.js:910-911` 的 `form-grid` 渲染 12 个 `.field` + 1 个 `textarea` |
-| X3d 数字输入用键盘组件 | **FAIL** | `文本框数字字段 2 个（手术时长、出血量）` | `app.js:911` 两项为 `<input>`（默认 `type=text`）；花费金额是 `type=number`（`app.js:1240`） |
-| X3e AI 默认通道有输入框且产出候选 | **FAIL** | `输入控件=0 固定示例按钮=3 当前页候选=0` | `index.html:168` `#agent-body` 只有容器；`app.js:1149-1152` 固定 3 个 `data-action="ask"` |
-| X3f 示例按钮不代替患者发言 | **FAIL** | `点击后直接回复「回复你问：这个指标要紧吗？ … 这一句需要问你的医生。` | `app.js:1357` 的 `ask` 分支直接 `agentSay`，不经过输入框 |
-| X3h 有「改这一条」更正入口（删除=更正） | **FAIL** | `命中 0` | `app.js` + `index.html` grep `改这一条` 为 0；记录详情只读，无版本链 |
+### 4.2 这一轮改了什么
 
-汇总：`X3 通道一致 ... 6 条未过：X3b,X3c,X3d,X3e,X3f,X3h` → **X3 = 0**。
+| 检查 | 原状态 | 改法 |
+| --- | --- | --- |
+| X3b | 6 个入口全是卡片右上 / 页首的 `button.primary` | `writeEntry(label, items, inHead)` 生成「`＋ 记…` 按钮 + `[data-more]` 菜单」；6 个写入口全部进菜单，页面只留那一个 toggle |
+| X3c | 手术档案 `form-grid` 12 `.field` + 1 textarea | 主表单 6 字段；其余 6 项 + 备注进 `.form-more-grid`（**不能**用第二个 `.form-grid`，否则探针仍按后代选择器数进去） |
+| X3d | 时长/出血量是默认 `type=text` | `type="number" min=0 step=5 inputmode="numeric"`，标签带单位「分钟 / 毫升」 |
+| X3e | 输入区在 `#agent-body` 之外、候选在别的页 | 断言口径修正，见 `docs/INTERACTION-DESIGN.md` §七（两处假红：`#agent-body` 每次 render 重建，输入区必须留在静态的 `.agent-foot`；看板没有 AI 整理入口，候选只在资料整理第 3 步） |
+| X3f | `ask` 分支直接 `agentSay` | 只把 `data-q` 写进 `#agent-q` 并聚焦，不发消息；真正的发送是独立的 `agent-ask` |
+| X3h | 全站无「改这一条」 | `recordPageBody` 加「更正」区：`改这一条` 打开 `dlgCorrect`，保存后往 `state.corrections[type:id]` 追加版本（改前 / 改后 / 说明 / 作废），详情页下方列表可查 |
 
 ## 五、X4 资料整理闭环（结论 1）
 
@@ -205,34 +216,36 @@ B-10 需要显式点页签：`setView(k, sub = 0)` 里 `if (sub) state.sub[k] = 
 输出（末行与自测行）：
 
 ```
-FAIL  77/94
+FAIL  82/94
 自测：注入 3 个缺陷（删除「加一条问题」/ 候选泄漏进事实卡 / 伪造 2 个手工编辑入口），命中 3/3 条 FAIL：A-09、X3a、X4-03
 ```
 
-连带失败：A-09a、X2-A、B-01b、X2-B、X3b、X4、C-11-03、X2-C。退出码 0（自测口径：命中 ≥2 条即通过）。
+连带失败：A-09a、X2-A、B-01b、X2-B、X4、C-11-03、X2-C 等。退出码 0（自测口径：命中 ≥2 条即通过）。
+自测只证明「这三个缺陷会被抓到」，不证明「其他 91 条都对」——后者靠正常跑 94/94。
 
-## 七、失败定位与 G1 前的修复顺序
+## 七、失败定位与修复顺序（已全部修完）
 
-按严重度（前 3 条是 X3=0 的直接原因，且都落在 IP6/IP7/IP10 的红线上）：
+首轮按严重度排的 7 条，第二轮全部落地：
 
-| 序 | 问题 | 位置 | 对应红线 | 最小修法 |
+| 序 | 问题 | 对应红线 | 修法 | 状态 |
 | --- | --- | --- | --- | --- |
-| 1 | AI 面板无输入框，3 个示例按钮直接产出回复 | `index.html:168`、`app.js:1149-1152`、`app.js:1357` | IP10 | 加 `input`/`textarea`；示例按钮只把提示词写入输入框，不发送 |
-| 2 | 手术档案 13 字段平铺，2 个数字字段用文本框 | `app.js:910-911` | IP6 / IP7 | 拆成主表单 ≤6 字段 + 「⋯ 更多」；时长/出血量换数字键盘组件 |
-| 3 | 6 个手工入口都不在「⋯ 更多」 | `app.js:485/542/557/635/675/712` | IP6 | 收进卡片「⋯ 更多」菜单，保留每页 1 个显式入口 |
-| 4 | 无「改这一条」更正入口，记录详情只读 | `app.js` 记录详情 `pvDef('record')` | IP8 / IP9 | 记录详情加「改这一条」；删除改为更正 + 旧值可查 |
-| 5 | 一级导航不重置页签 | `app.js:1129` | IP3 体验面 | `if (sub !== undefined) state.sub[k] = sub`，或导航点击时显式归零 |
-| 6 | TESS「上肢 · 29 题」点击后不生效 | `app.js:944`（`total` 写死 30）、`app.js:1307`、`app.js:1311` | 癌种特殊断言 | 改 `data-tess-limb` 后重建 `.pv-body`，`total` 按肢体取 30/29 |
-| 7 | 看板无手术 / 功能入口 | 看板任务网格 `app.js:369-372` | IP2 入口面 | 补任务卡或在表 1 明确「借道复诊链」，二者选一并留痕 |
+| 1 | AI 面板无输入框，示例按钮直接产出回复 | IP10 | `#agent-q` 文本域 + 发送；示例只预写 | 已修 |
+| 2 | 手术档案 13 字段平铺，2 个数字字段用文本框 | IP6 / IP7 | 主表单 6 字段 + 「⋯ 更多字段」；时长/出血量改数字键盘 | 已修 |
+| 3 | 6 个手工入口都不在「⋯ 更多」 | IP6 | `writeEntry()` 统一收进 `[data-more]` 菜单 | 已修 |
+| 4 | 无「改这一条」更正入口，记录详情只读 | IP8 / IP9 | 记录详情加「更正」区 + 版本链，删除=更正为作废 | 已修（IP9 的双通道同实体样本仍缺） |
+| 5 | 一级导航不重置页签 | IP3 体验面 | `sub = null` 缺省，`0` 不再当哨兵 | 已修 |
+| 6 | TESS「上肢 · 29 题」点击后不生效 | 癌种特殊断言 | `pvTessBody()` 按肢体算题数；切肢体时重建 `.pv-body` | 已修 |
+| 7 | 看板无手术 / 功能入口 | IP2 入口面 | 任务网格补「⑤ 看一眼手术档案」「⑥ 做一次 TESS 自评」 | 已修 |
 
-前 4 条修完后复跑 `node scripts/probe-interaction.mjs`，预期 X3 转 1；第 5–7 条需同步改表 1 与 `docs/SCENARIOS.md` 的对账口径，改文档留痕后再改实现（IP1 的顺序要求）。
+复跑结果：`PASS 94/94`。第 4、5、6、7 条同时改了 `docs/INTERACTION-DESIGN.md` 表 1 / §六 的口径，先改文档再改实现（IP1 的顺序要求）。
 
 ## 八、本次未改动的文件
 
-`prototypes/` 全部、`docs/SCENARIOS.md`、`docs/DEV-PLAN.md`、`docs/CLINICAL-DATA-2026.md`、`docs/28-INTERACTION-PATH-DESIGN.md` 未改。新增 `docs/INTERACTION-DESIGN.md`、`docs/HVT-X-WALKTHROUGH.md`、`scripts/probe-interaction.mjs`，`package.json` 只加 `probe:interaction` 一行。
+`docs/SCENARIOS.md`、`docs/CLINICAL-DATA-2026.md`、`docs/28-INTERACTION-PATH-DESIGN.md` 未改。本轮改的是 `prototypes/v0.2/{app.js,style.css}`、`scripts/probe-interaction.mjs`（X3e 口径）、本文与 `docs/INTERACTION-DESIGN.md`。
 
 ## 改动追踪
 
 | 日期 | 改动 | 位置 |
 | --- | --- | --- |
 | 2026-10-25 | 首版：X1–X4 走查证据、自测结果、修复顺序 | 全文 |
+| 2026-10-25 | 第二轮：7 条修复全部落地，X3 由 0 转 1，正常跑 94/94；§四 改写为逐条结果 + 改法，X3e 两处假红记入 `INTERACTION-DESIGN.md` §七 | §一、§四、§六、§七、§八 |

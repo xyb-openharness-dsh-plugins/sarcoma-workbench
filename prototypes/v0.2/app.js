@@ -8,7 +8,7 @@
    判断类统一出口：「这一句需要问你的医生」。
 */
 
-const APP_INFO = { version: '0.2.0', build: '2026-10-25', channelLabel: '交互原型 · 未接入 DSH' };
+const APP_INFO = { version: '0.2.1', build: '2026-10-25', channelLabel: '交互原型 · 未接入 DSH' };
 const DEMO = window.DEMO;
 const D = DEMO.profiles;
 
@@ -80,6 +80,9 @@ const state = {
   agentOpen: true,
   intake: { step: 1, decisions: {} },
   tess: { limb: '下肢', answers: [] },
+  /* 更正台账（IP8/IP9）：键 `type:id` → 版本数组。只增版本，不删行；
+     「删除一条记录」在这里就是一个更正版本，旧值仍留在数组里。 */
+  corrections: {},
   local: { A: { costs: [], contacts: [], trialNotes: [], questions: [], tessSaved: null }, B: { costs: [], contacts: [], trialNotes: [], questions: [], tessSaved: null } },
 };
 const P = () => D[state.profile];
@@ -101,6 +104,7 @@ function resetProfileState() {
   state.flipped = new Set();
   state.intake = { step: 1, decisions: {} };
   state.tess = { limb: '下肢', answers: [] };
+  state.corrections = {};
 }
 state.sel = (() => {
   const dk = (D.A.dash_keys || []).slice(0, 3);
@@ -117,6 +121,20 @@ const section = (title, sub, body, right = '') => `<div class="section-title"><d
 const emptyState = (h, p, actions = '') => `<div class="empty"><h3>${esc(h)}</h3><p>${esc(p)}</p>${actions ? `<div class="actions">${actions}</div>` : ''}</div>`;
 const rowHtml = (title, sub, side = '') => `<div class="row"><div class="row-main"><div><b>${title}</b>${sub ? `<p>${sub}</p>` : ''}</div></div>${side ? `<div class="side">${side}</div>` : ''}</div>`;
 const recBtn = (type, id, title, sub, side = '') => `<button type="button" class="row-btn" data-record="${esc(type)}" data-id="${esc(id)}">${rowHtml(title, sub, side)}</button>`;
+
+/* 写入口收敛（IP6）：每页只露 1 个「＋ 记…」，其余写入口放进「⋯ 更多」。
+   这是「显式编辑入口 ≤1」的实现方式——不是把入口藏起来，而是把同一页的第二、第三
+   个写入口收进一个可点开的菜单，点得开、看得见文案，只是不并排在页面上。
+   探针 X3b 按 [data-more] 判断入口是否被收起，菜单容器必须带这个属性。 */
+let moreSeq = 0;
+function writeEntry(label, items, inHead = false) {
+  const id = `more-${++moreSeq}`;
+  return `<div class="write-entry${inHead ? ' in-head' : ''}">
+    <button type="button" class="primary" data-action="more-toggle" aria-haspopup="menu" aria-expanded="false" aria-controls="${id}">${esc(label)}</button>
+    <div class="more-menu" id="${id}" data-more role="menu" hidden>${items}</div>
+  </div>`;
+}
+
 
 const DRUG_ULN = '获批状态未核实';
 const drug = (name) => `${esc(name)} <span class="pill gold">${DRUG_ULN}</span>`;
@@ -371,6 +389,9 @@ function vDashboard() {
     ['labs', 1, '看一眼一图秀', '默认 3 条数值线 + 1 条分类序列', '②'],
     ['followup', 2, '带问题清单去复诊', `已记 ${p.questions.length} 条，问过 ${p.questions.filter((q) => q.asked).length} 条`, '③'],
     ['imaging', 2, '整理一份报告', '上传 → 解析候选 → 逐项核对 → 入库', '④'],
+    // 手术与功能这两页原来是孤儿入口（只能从别的页借道），看板各留一个直达（IP2 入口面）
+    ['surgery', 0, '看一眼手术档案', p.surgery.length ? `已记 ${p.surgery.length} 条：${p.surgery.map((r) => r.kind).join(' / ')}` : '本档案没有手术记录', '⑤'],
+    ['function', 1, '做一次 TESS 自评', p.tess.length ? `已记录 ${p.tess[0].answers.length} 题（${p.tess[0].limb}）` : '还没作答过，逐题记录不打分', '⑥'],
   ];
   const recent = [
     ...p.imaging.map((r, i) => ({ d: r.d, t: `${r.method} · ${r.region}`, s: r.conclusion, type: 'imaging', id: String(i) })),
@@ -482,7 +503,7 @@ function vSurgery() {
   const p = P();
   const s = state.sub.surgery || 0;
   if (s === 0) {
-    return `${pageHead()}<div class="actions" style="margin-bottom:12px"><button type="button" class="primary" data-pv="surgery">打开手术档案（整页表单）</button></div>
+    return `${pageHead()}${writeEntry('＋ 记一条', '<button type="button" role="menuitem" data-pv="surgery">打开手术档案（整页表单）</button>')}
       <div class="card">${p.surgery.map((r, i) => recBtn('surgery', i, esc(r.kind), `${esc(r.d)} · ${esc(r.institution)} · ${esc(r.extent)}`, pill('术式原文', 'line'))).join('')}</div>
       <div class="notice plain">字段结构在整页表单里演示：日期、术式、机构、切除范围、重建、术前/术后诊断、切缘原文、伤口情况、麻醉、时长、出血量、备注。</div>`;
   }
@@ -539,7 +560,7 @@ function vTox() {
   }
   const contacts = L().contacts;
   return `${pageHead()}<div class="notice warn">本台<b>不给「什么情况必须去医院」的阈值</b>。这里只列你自己填的联系人与你写的观察项。</div>
-    <div class="card"><div class="card-head"><div><h2>我填的联系人</h2><p>只在你这台设备上演示；刷新重置</p></div><button type="button" class="primary" data-action="add-contact">加一个联系人</button></div>
+    <div class="card"><div class="card-head"><div><h2>我填的联系人</h2><p>只在你这台设备上演示；刷新重置</p></div>${writeEntry('＋ 记一条', '<button type="button" role="menuitem" data-action="add-contact">加一个联系人</button>', true)}</div>
     ${contacts.length ? `<div class="mini-list">${contacts.map((c) => `<div class="mini-item"><div><b>${esc(c.name)} · ${esc(c.relation)}</b><p>${esc(c.note)}</p></div><span>${esc(c.phone)}</span></div>`).join('')}</div>` : emptyState('还没有填联系人', '你可以写：谁陪你去、出现什么情况时你希望先打给谁。观察项由你写，不由产品给阈值。')}
     </div>${judgeLine}`;
 }
@@ -554,7 +575,7 @@ function vFunction() {
   }
   if (s === 1) {
     const saved = p.tess[0] || L().tessSaved;
-    return `${pageHead()}<div class="actions" style="margin-bottom:12px"><button type="button" class="primary" data-pv="tess">逐题作答 / 查看（整页）</button></div>
+    return `${pageHead()}${writeEntry('＋ 记一次', '<button type="button" role="menuitem" data-pv="tess">逐题作答 / 查看（整页）</button>')}
       ${saved ? `<div class="card"><div class="card-head"><div><h2>最近一次 TESS</h2><p>${esc(saved.d)} · ${esc(saved.limb)} · 只存原始作答</p></div>${pill(`已记录 ${saved.answers ? saved.answers.filter((x) => x !== null).length : saved.count} 题`, 'green')}</div>
         <p class="table-note">不显示总分、不画趋势、不比较两次作答。分数怎么读，属于医学判断。</p></div>`
       : emptyState('这个档案还没有 TESS 作答', '可以选上肢或下肢，逐题记录 0–5 的原始作答；保存后只显示「已记录 N 题」。', '<button type="button" class="primary" data-pv="tess">开始作答</button>')}
@@ -632,7 +653,7 @@ function vFollowup() {
       <div class="notice plain"><b>我的位置不在这里算。</b>本档案已记录的复查日期：${p.imaging.map((r) => esc(r.d)).join(' / ')}。这些是事实，不是「你属于哪一档」的结论。</div>`;
   }
   const qs = p.questions.concat(L().questions);
-  return `${pageHead()}<div class="actions" style="margin-bottom:12px"><button type="button" class="primary" data-action="add-question">加一条问题</button></div>
+  return `${pageHead()}${writeEntry('＋ 记一条', '<button type="button" role="menuitem" data-action="add-question">加一条问题</button>')}
     <div class="notice violet">产品只把问题整理成清单，<b>不生成答案</b>。医生怎么答，就照原话记下来。</div>
     <div class="card">${qs.map((q, i) => `<div class="row"><div class="row-main"><div><b>${esc(q.q)}</b><p>${esc(q.d)}${q.answer ? ' · 医生原话：' + esc(q.answer) : ''}</p></div></div><div class="side"><label class="checkline" style="margin:0"><input type="checkbox" data-asked="${i}" ${q.asked ? 'checked' : ''}>问过了</label></div></div>`).join('')}</div>${judgeLine}`;
 }
@@ -672,7 +693,7 @@ function vLife() {
   }
   if (s === 1) {
     const costs = L().costs;
-    return `${pageHead()}<div class="actions" style="margin-bottom:12px"><button type="button" class="primary" data-action="add-cost">记一笔花费</button></div>
+    return `${pageHead()}${writeEntry('＋ 记一笔', '<button type="button" role="menuitem" data-action="add-cost">记一笔花费</button>')}
       <div class="card">${costs.length ? `<div class="table-wrap"><table><thead><tr><th>日期</th><th>用途</th><th>金额</th></tr></thead><tbody>${costs.map((c) => `<tr><td class="num">${esc(c.d)}</td><td>${esc(c.purpose)}</td><td class="num">¥${esc(c.amount)}</td></tr>`).join('')}</tbody></table></div>` : emptyState('还没有记花费', '只记金额与用途，不判断「值不值得」。数据只在内存里，刷新重置。')}</div>`;
   }
   if (s === 2) {
@@ -709,7 +730,7 @@ function vTrials() {
       <div class="notice warn" style="margin-top:12px">他泽司他（Tazemetostat）：中国大陆 2025-03-18 获批的适应症是 EZH2 突变阳性复发/难治性滤泡性淋巴瘤；<b>上皮样肉瘤适应症在中国大陆未获批</b>。NCCN V3.2026 已把该药从上皮样肉瘤推荐中删除（SARC-G, 4 of 14 – Epithelioid Sarcoma: Tazemetostat removed）。</div>`;
   }
   const notes = L().trialNotes;
-  return `${pageHead()}<div class="actions" style="margin-bottom:12px"><button type="button" class="primary" data-action="add-trial">记一条试验线索</button></div>
+  return `${pageHead()}${writeEntry('＋ 记一条', '<button type="button" role="menuitem" data-action="add-trial">记一条试验线索</button>')}
     <div class="notice">只记「医生在哪次门诊提到、登记号/标题原文、当时怎么说的」。登记状态一律标「未核实」，不判断是否符合条件。</div>
     <div class="card">${notes.length ? `<div class="mini-list">${notes.map((n) => `<div class="mini-item"><div><b>${esc(n.title)}</b><p>${esc(n.id)} · ${esc(n.note)}</p></div><span>${esc(n.d)}</span></div>`).join('')}</div>` : emptyState('还没有记试验线索', '如果医生提到某个试验，把登记号、标题和日期记在这里；本台不替你报名、不判断资格。')}</div>${judgeLine}`;
 }
@@ -849,9 +870,20 @@ function recordPageBody(type, id) {
   P().tox.forEach((x, i) => { if (x.d === r.d) push('symptom', i, x.symptom, x.note); });
   P().diagnosis.forEach((x, i) => { if (x.d === r.d) push('diagnosis', i, x.kind, x.detail); });
   for (const m of P().metrics) m.points.forEach((p, i) => { if (p.d === r.d && typeof p.v === 'number') push('lab', `${m.key}:${i}`, `${m.name} ${p.v} ${m.unit}`, p.src); });
+  /* 更正台账（IP8/IP9）：只增版本、不删行。删除在这套口径里等于「更正为作废」，
+     旧值留在本页下方，谁在什么时候改的、原来写的是什么，都查得到。 */
+  const versions = state.corrections[`${type}:${id}`] || [];
+  const versionHtml = versions.length
+    ? `<div class="mini-list" style="margin-top:10px">${versions.map((v, i) => `<div class="mini-item"><div><b>第 ${i + 1} 次更正 · ${esc(v.at)}${v.voided ? ' · 已作废' : ''}</b><p>改前：${esc(v.before)}</p>${v.after && v.after !== v.before && !v.voided ? `<p>改后：${esc(v.after)}</p>` : ''}${v.note ? `<p class="table-note">说明：${esc(v.note)}</p>` : ''}</div></div>`).join('')}</div>`
+    : '<p class="table-note" style="margin-top:9px">这条记录还没有更正过。</p>';
   const html = `<div class="pv-inner">
     <section class="pv-section"><h2>事实</h2>
       <dl class="kv">${fields.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(txt(v))}</dd></div>`).join('')}</dl>
+    </section>
+    <section class="pv-section"><h2>更正</h2>
+      <div class="actions"><button type="button" class="pv-btn" data-action="correct-record" data-type="${esc(type)}" data-id="${esc(id)}">改这一条</button></div>
+      <p class="pv-note">写错了就改，不抹掉原来那条：「删除」在这个台账里等于「更正为作废」，旧值仍然看得见。这样你日后才答得出「这条是什么时候变成现在这样的」。</p>
+      ${versionHtml}
     </section>
     ${orig ? `<section class="pv-section"><h2>原文</h2><div class="pv-prose"><pre>${esc(orig.text)}</pre></div>
       <div class="actions" style="margin-top:10px"><button type="button" class="pv-btn" data-report="${esc(type)}" data-id="${esc(id)}">看原文（第二层）</button></div>
@@ -930,11 +962,30 @@ if (pv) {
     }),
     pvDef('surgery', '手术档案', '手术与伤口 › 手术档案', (body) => {
       const s = P().surgery[P().surgery.length - 1] || {};
+      /* 一张表单不铺 13 个字段（IP6 要求 ≤6）：前 6 个是写手术记录时一定会填的，
+         其余 6 个与备注收进「⋯ 更多字段」——不是删掉，是折一层。
+         时长/出血量是数字，用 number + inputmode，别让人在手机上翻符号键盘（IP7）。 */
+      const primary = [['手术日期', s.d, 'date'], ['术式', s.kind], ['机构', s.institution], ['切除范围', s.extent], ['重建方式', s.recon], ['术前诊断', s.note]];
+      const extra = [
+        ['术后诊断', txt(''), 'text'],
+        ['麻醉方式', txt(''), 'text'],
+        ['切缘原文', txt(P().margin[P().margin.length - 1] ? P().margin[P().margin.length - 1].margin_text : ''), 'text'],
+        ['伤口情况', txt(P().wound[P().wound.length - 1] ? P().wound[P().wound.length - 1].text : ''), 'text'],
+        ['手术时长（分钟）', '', 'num'],
+        ['出血量（毫升）', '', 'num'],
+      ];
+      const fieldHtml = ([l, v, kind]) => (kind === 'num'
+        ? `<div class="field"><label>${esc(l)}</label><input type="number" min="0" step="5" inputmode="numeric" placeholder="填数字"></div>`
+        : `<div class="field"><label>${esc(l)}</label><input${kind === 'date' ? ' type="date"' : ''} value="${esc(txt(v, ''))}" placeholder="未记录"></div>`);
       body.innerHTML = `<div class="pv-inner">
         <section class="pv-section"><h2>字段结构</h2>
-          <div class="form-grid">
-            ${[['手术日期', s.d], ['术式', s.kind], ['机构', s.institution], ['切除范围', s.extent], ['重建方式', s.recon], ['术前诊断', s.note], ['术后诊断', ''], ['切缘原文', P().margin[P().margin.length - 1] ? P().margin[P().margin.length - 1].margin_text : ''], ['伤口情况', P().wound[P().wound.length - 1] ? P().wound[P().wound.length - 1].text : ''], ['麻醉方式', ''], ['手术时长', ''], ['出血量', '']].map(([l, v]) => `<div class="field"><label>${esc(l)}</label><input value="${esc(txt(v, ''))}" placeholder="未记录"></div>`).join('')}
-            <div class="field wide"><label>备注</label><textarea placeholder="只写事实，不写判断">${esc('')}</textarea></div>
+          <div class="form-grid">${primary.map(fieldHtml).join('')}</div>
+          <div class="form-more">
+            <button type="button" class="pv-btn" data-action="more-fields" aria-expanded="false" aria-controls="surg-more">⋯ 更多字段（${extra.length} 项 + 备注）</button>
+            <div class="form-more-grid" id="surg-more" hidden>
+              ${extra.map(fieldHtml).join('')}
+              <div class="field wide"><label>备注</label><textarea placeholder="只写事实，不写判断">${esc('')}</textarea></div>
+            </div>
           </div>
           <div class="form-actions"><button type="button" class="pv-btn" data-action="save-draft">保存草稿</button><button type="button" class="pv-btn" data-pv="margin">去切缘记录</button></div>
           <p class="pv-note" style="margin-top:10px">原型只在内存里演示字段，不写磁盘；刷新即重置。</p>
@@ -1267,13 +1318,34 @@ function dlgAddQuestion() {
     </div><p class="table-note" style="margin-top:9px">产品只整理清单，不生成答案。</p>`,
     '<button type="button" data-action="close">取消</button><button type="button" class="primary" data-action="save-question">保存</button>');
 }
-function dlgAddTrial() {
-  openDialog('临床研究', '记一条试验线索', `<div class="form-grid">
+function dlgAddTrial() {  openDialog('临床研究', '记一条试验线索', `<div class="form-grid">
     <div class="field"><label>日期</label><input id="tr-d" type="date" value="${esc(P().window_end)}"></div>
     <div class="field"><label>登记号 / 标题</label><input id="tr-i" placeholder="医生提到的原文，没记住就写「未记」"></div>
     <div class="field wide"><label>当时怎么说的</label><input id="tr-n" placeholder="只记原话，不写判断"></div>
     </div><p class="table-note" style="margin-top:9px">登记状态一律标「未核实」；本台不判断是否符合入组条件。</p>`,
     '<button type="button" data-action="close">取消</button><button type="button" class="primary" data-action="save-trial">保存</button>');
+}
+
+/* 更正对话框（IP8/IP9）：改的是同一事实层的同一条记录，保存后旧值作为版本留在页上。
+   「删除」不提供——删除按钮在这套口径里就是「更正为作废」，而且旧值照样可查。 */
+function dlgCorrect(type, id) {
+  const r = recordOf(type, id);
+  if (!r) return;
+  const fields = fieldsOf(type, r);
+  const rows = fields.map(([k, v], i) => `<div class="field"><label>${esc(k)}</label><input data-cf="${i}" value="${esc(txt(v, ''))}" placeholder="未记录"></div>`).join('');
+  openDialog(`更正 · ${labelOf(type)}`, '改这一条', `<div class="form-grid">${rows}</div>
+    <div class="field" style="margin-top:12px"><label>更正说明（为什么改）</label><textarea id="corr-note" placeholder="例如：日期抄错了，报告上写的是 3 月 12 日"></textarea></div>
+    <p class="table-note" style="margin-top:9px">保存后旧值不会消失，会作为一条更正留在记录详情页下方。要作废这条记录就点「更正为作废」，同样不抹掉原有内容。</p>`,
+  `<button type="button" data-action="close">取消</button><button type="button" class="pv-btn" data-action="void-record" data-type="${esc(type)}" data-id="${esc(id)}">更正为作废</button><button type="button" class="primary" data-action="save-correct" data-type="${esc(type)}" data-id="${esc(id)}">保存更正</button>`);
+}
+
+/* 菜单开合：同一页只露一个显式写入口，其余在这里展开。 */
+function closeMenus() {
+  document.querySelectorAll('.write-entry .more-menu:not([hidden])').forEach((m) => {
+    m.hidden = true;
+    const btn = m.parentElement.querySelector('[data-action="more-toggle"]');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  });
 }
 
 /* ---------------- 事件 ---------------- */
@@ -1288,6 +1360,8 @@ function setFont(i) {
 
 document.addEventListener('click', (e) => {
   const t = e.target;
+  // 点菜单外面就把「⋯ 更多」收起来（菜单只在点开它的那一页有意义）
+  if (!t.closest('.write-entry')) closeMenus();
   const rec = t.closest('[data-record]');
   if (rec && pv) { pv.open('record', { type: rec.dataset.record, id: rec.dataset.id }); return; }
   const rep = t.closest('[data-report]');
@@ -1351,6 +1425,42 @@ document.addEventListener('click', (e) => {
   const actionEl = t.closest('[data-action]');
   if (!actionEl) return;
   const a = actionEl.dataset.action;
+  if (a === 'more-toggle' || a === 'more-fields') {
+    // 同一个开合逻辑给两种按钮用：页面里的「＋ 记…」菜单、手术档案的「⋯ 更多字段」
+    const box = document.getElementById(actionEl.getAttribute('aria-controls') || '');
+    if (box) { const open = box.hidden; box.hidden = !open; actionEl.setAttribute('aria-expanded', String(open)); }
+    return;
+  }
+  closeMenus();
+  if (a === 'correct-record') { dlgCorrect(actionEl.dataset.type, actionEl.dataset.id); return; }
+  if (a === 'save-correct' || a === 'void-record') {
+    const type = actionEl.dataset.type;
+    const id = actionEl.dataset.id;
+    const key = `${type}:${id}`;
+    const r = recordOf(type, id);
+    const fields = (r && fieldsOf(type, r)) || [];
+    const before = fields.map(([k, v]) => `${k}：${txt(v)}`).join('；');
+    const noteEl = $('#corr-note');
+    const note = (noteEl && noteEl.value.trim()) || '';
+    const list = state.corrections[key] || (state.corrections[key] = []);
+    if (a === 'void-record') {
+      list.push({ at: P().window_end, before, after: '', note: note || '这条记录作废（不作诊断，只是不再采用）', voided: true });
+    } else {
+      const after = fields.map(([k], i) => {
+        const el = document.querySelector(`[data-cf="${i}"]`);
+        return `${k}：${el && el.value.trim() ? el.value.trim() : '未记录'}`;
+      }).join('；');
+      if (after === before) { toast('没有改动——先改一格再保存'); return; }
+      list.push({ at: P().window_end, before, after, note });
+    }
+    closeDialog();
+    // 整页视图的正文是独立节点，render() 不会重建它；自己重画，不另开一层历史
+    const bodyEl = document.querySelector('.pv-body');
+    if (pv && pv.current === 'record' && bodyEl) bodyEl.innerHTML = recordPageBody(type, id).html;
+    else render();
+    toast(a === 'void-record' ? '已更正为作废（旧值仍可查）' : '已保存更正（旧值仍可查）');
+    return;
+  }
   if (a === 'close') { closeDialog(); return; }
   if (a === 'settings') { dlgSettings(); return; }
   if (a === 'about') { dlgAbout(); return; }

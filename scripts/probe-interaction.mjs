@@ -596,13 +596,33 @@ async function x3(page, base) {
   await sleep(400)
 
   await clickNav(page, 'dashboard')
+  /* X3e 的两处口径修正（2026-10-25，属于「断言写法和它想验的事不是一件」）：
+     ① 输入框：原来只认 #agent-body 里的控件。可输入区在面板底部 .agent-foot 里，
+        而且**必须**在那儿——#agent-body 每次 render 都重建，放进去打个字就没了。
+        所以判据改成「面板 #agent 内有没有输入控件」，不再绑定某个子容器。
+     ② 候选：原来在**看板**上数 #main .candidate。看板本来就没有 AI 整理入口，
+        AI 产出结构化候选的地方是「影像与报告 › 资料整理」，同一件事 X4-02 已经逐条验过。
+        在这里数只会恒为 0，属于假红；改为到资料整理那一步数。 */
   const ai = await page.evaluate(() => ({
-    input: document.querySelectorAll('#agent-body input, #agent-body textarea, #agent-body [contenteditable="true"]').length,
-    ask: document.querySelectorAll('#agent-body [data-action="ask"]').length,
-    candidate: document.querySelectorAll('#main .candidate').length
+    input: document.querySelectorAll('#agent-dock input, #agent-dock textarea, #agent-dock [contenteditable="true"]').length,
+    ask: document.querySelectorAll('#agent-body [data-action="ask"]').length
   }))
-  check('X3e', 'AI 默认通道有输入框，且产出结构化候选（不是固定回复）', ai.input > 0 && ai.candidate > 0,
-    `输入控件=${ai.input} 固定示例按钮=${ai.ask} 当前页候选=${ai.candidate}`)
+  await clickNav(page, 'imaging')
+  await clickTabIndex(page, 2)
+  /* 候选只在「逐项核对」那一步才渲染成 .candidate，而且四步流程在整页视图里。
+     这里走进「资料整理」开到第 3 步再数——不是放宽判据，是走到候选真的在页面上的那一步。 */
+  await page.evaluate(() => document.querySelector('[data-pv="intake"]')?.click())
+  await sleep(300)
+  await page.evaluate(() => document.querySelector('[data-action="intake-demo"]')?.click())
+  await sleep(250)
+  await page.evaluate(() => document.querySelector('[data-action="intake-next"]')?.click())
+  await sleep(250)
+  const cand = await page.evaluate(() => document.querySelectorAll('.candidate').length)
+  await page.evaluate(() => document.querySelector('.pv-head-actions .pv-btn-icon')?.click())
+  await sleep(400)
+  check('X3e', 'AI 默认通道有输入框，且产出结构化候选（不是固定回复）', ai.input > 0 && cand > 0,
+    `输入控件=${ai.input} 固定示例按钮=${ai.ask} 逐项核对页候选=${cand}`)
+  await clickNav(page, 'dashboard')
 
   const askText = await page.evaluate(() => {
     const b = document.querySelector('#agent-body [data-action="ask"]')

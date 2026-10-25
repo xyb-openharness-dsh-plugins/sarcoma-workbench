@@ -1,4 +1,4 @@
-/* 小韧宝 SarcPal v0.2.0 · 交互原型样式
+/* 小韧宝 SarcPal v0.2.1 · 交互原型样式
    家族骨架沿用（顶栏三段式 / 右侧 AI 面板 / 字号三档 / 指标卡 3D 翻面 / 一图秀画布），
    品牌变量换成软组织肉瘤的赭紫：--accent #7B4C9A / 纸色 #FAF8FB / 深墨 #4A2D5C / 线 #E6DFEC。
    字号一律 calc(NNpx * var(--tz))；--tz 由字号三档切换（1 / 1.15 / 1.32）。 */
@@ -344,6 +344,16 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .field textarea{min-height:82px;resize:vertical}
 .field.wide{grid-column:1/-1}
 .form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.form-more{margin-top:12px}
+.form-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:10px}
+/* 写入口收敛（IP6）：每页只露一个「＋ 记…」，其余写入口收进「⋯ 更多」。
+   探针 X3b 靠 [data-more] 判断入口是否被收起来，别把菜单挪出这个容器。 */
+.write-entry{position:relative;margin-bottom:12px}
+.write-entry.in-head{margin:0}
+.more-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:196px;background:#fff;border:1px solid var(--line-strong);border-radius:11px;box-shadow:0 12px 30px rgba(43,28,56,.16);padding:6px;display:flex;flex-direction:column;gap:2px}
+.more-menu button{min-height:0;border:0;background:transparent;text-align:left;padding:9px 10px;border-radius:8px;font-size:calc(12.5px * var(--tz));color:var(--ink)}
+.more-menu button:hover,.more-menu button:focus-visible{background:var(--accent-soft)}
+@media (max-width:720px){.form-more-grid{grid-template-columns:minmax(0,1fr)}}
 .checkline{display:flex;gap:8px;align-items:flex-start;font-size:calc(11.5px * var(--tz));color:var(--ink-2);line-height:1.6;margin-top:6px}
 .checkline input{width:16px;height:16px;flex:0 0 16px;margin-top:3px;accent-color:var(--accent)}
 
