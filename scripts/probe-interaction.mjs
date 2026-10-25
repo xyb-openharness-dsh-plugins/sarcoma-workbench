@@ -898,12 +898,17 @@ async function main() {
   const failed = results.filter((r) => !r.ok)
   console.log(`\n${failed.length ? 'FAIL' : 'PASS'}  ${results.length - failed.length}/${results.length}`)
   if (SELF_TEST) {
+    /* 自测判据：注入几个就必须抓到几个，**不设数量阈值**。
+       这里原来是 hit.length >= 3（注 4 个允许漏 1 个）——漏掉的那一个恰好可能是最关键的：
+       比如把 X3i 的断言写坏，注 4 条仍能命中 3 条，自测照样绿，而 P0-1 的回归闸就此消失。
+       starter 1.6.3 同款修正（那边是注 3 个只要求抓 2 个）。 */
     const injected = ['A-09', 'X3a', 'X4-03', 'X3i']
     const hit = injected.filter((id) => results.some((r) => r.id === id && !r.ok))
-    const enough = hit.length >= 3
+    const miss = injected.filter((id) => !hit.includes(id))
+    const enough = miss.length === 0
     console.log(enough
-      ? `自测：注入 4 个缺陷（删除「加一条问题」/ 候选泄漏进事实卡 / 伪造 2 个手工编辑入口 / 看板标题写成判读结论），命中 ${hit.length}/4 条 FAIL：${hit.join('、')}`
-      : `自测失败：注入 4 个缺陷只命中 ${hit.length}/4 条 FAIL（要求 ≥3）：${hit.join('、') || '无'}，闸门漏检`)
+      ? `自测：注入 4 个缺陷（删除「加一条问题」/ 候选泄漏进事实卡 / 伪造 2 个手工编辑入口 / 看板标题写成判读结论），4/4 全部被抓到：${hit.join('、')}`
+      : `自测失败：注入 4 个缺陷漏检 ${miss.join('、')}（命中 ${hit.length}/4），闸门对这类缺陷不敏感`)
     process.exit(enough ? 0 : 1)
   }
   process.exit(failed.length ? 1 : 0)
