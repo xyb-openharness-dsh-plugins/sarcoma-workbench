@@ -137,7 +137,7 @@
 ```bash
 npm test                              # 25 pass（含 9 条跑产品源码的 K5 测试）
 node demo/build-demo-data.mjs         # 重新生成演示数据唯一源
-python3 scripts/verify-prototype.py   # 走查：11/32 页签、禁词、三档宽度、折叠卡、页脚
+python3 scripts/verify-prototype.py   # 走查：11/35 页签、禁词、三档宽度、折叠卡、页脚
 python3 scripts/shoot-screenshots.py  # 9 张实渲截图
 ```
 

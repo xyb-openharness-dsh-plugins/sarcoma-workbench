@@ -63,9 +63,9 @@ const SUBPAGES = {
   local: ['手术记录', '放疗疗程', '切缘与并发症'],
   systemic: ['治疗线总览', '周期与用药', '换线记录'],
   function: ['肢体功能', '淋巴水肿', '伤口与皮肤'],
-  metrics: ['血象', '肝肾与心肌', '趋势对照'],
+  metrics: ['全部指标卡', '血象', '肝肾与心肌', '一图秀'],
   followup: ['复查日历', '待办与问题', '就诊准备'],
-  trials: ['检索入口', '关注与入组'],
+  trials: ['我的建档', '匹配结果', '试验库', '关注与入组'],
   mind: ['当下感受', '私密记录', '支持资源', '生育与亲密'],
   records: ['资料库', '草稿核对', '导出快照', '隐私与分享'],
 };
@@ -89,6 +89,9 @@ const state = {
   // 默认导出为空不是 bug，是开关在工作；页面必须把这个"空"解释清楚，而不是把默认值改反。
   exportOpts: { privateOn: false, demoOff: true, from: '2025-01-01', to: TODAY },
   moodDraft: '',
+  flipped: new Set(),
+  chartSel: ['白细胞计数 WBC', '丙氨酸氨基转移酶 ALT'],
+  chartRange: 'all',
   lastExport: null,
   trialsQuery: '',
   trialFilter: 'all',
@@ -101,6 +104,8 @@ const P = () => D.profiles[state.profile];
    理由：同一段口径必须被产品与测试同时加载。写在 app.js 里时，
    测试只能在测试文件里重写一遍同名函数，于是"全绿"与产品行为无关（P1-18）。 */
 const EXITS = globalThis.SARCO_EXITS;
+const M = globalThis.SARCO_METRICS;
+if (!M) throw new Error('metrics.js 未加载：指标卡与一图秀无法渲染');
 if (!EXITS) throw new Error('exits.js 未加载：三出口过滤缺失，导出/AI/一页纸会失去私密与演示数据过滤');
 const {
   visible, privateCount, canLeave, exportable, optsFromUI, inRange, allPrivate,
@@ -668,77 +673,157 @@ function viewFuncList(domain) {
 }
 
 /* ---------------- metrics ---------------- */
-function viewMetrics() {
-  if (state.sub === 2) return viewMetricsTrend();
-  const group = state.sub === 0 ? '血象' : '肝肾与心肌';
-  const p = P();
-  const keyOf = (m) => {
-    if (group === '血象') return /WBC|ANC|HGB|PLT|中性粒|血红蛋白|白细胞/.test(m.name);
-    return /ALT|AST|肌酐|CREA|LVEF|TSH|胆红素|钾|钠/.test(m.name);
-  };
-  const list = p.metrics.filter(keyOf);
-  const names = [...new Set(list.map((m) => m.name))];
-  return `${pageHead(group, '按指标名分卡，卡背面是参考范围与出处。跨单位不合并。',
-    `${agentButton('我拍一张化验单', 'AI 抄化验单')}${moreMenu([{ label: '手工补一行' }])}`)}
-  ${notice('plain', '工作台<b>不做 CTCAE 自动分级到处置</b>：只显示数值、参考范围、日期与出处。数值高低要不要紧，由医生结合整体判断。')}
-  <div class="grid two">
-    ${names.map((n) => {
-      const rows = list.filter((m) => m.name === n).sort((a, b) => a.date.localeCompare(b.date));
-      const last = rows.slice(-1)[0], prev = rows.slice(-2)[0];
-      const inRef = (v, ref) => { const m = String(ref).match(/(-?\d+\.?\d*)\s*[–-]\s*(-?\d+\.?\d*)/); if (!m) return null; return v >= +m[1] && v <= +m[2]; };
-      const ok = inRef(last.value, last.ref);
-      return `<div class="card">
-        <div class="card-head"><h2>${esc(n)}</h2>${ok === null ? pill('无范围', 'grey') : ok ? pill('在范围内', 'green') : pill('超出范围', 'yellow')}</div>
-        <p class="big-value">${num(last.value, last.value % 1 ? 2 : 0)} <small>${esc(last.unit)}</small></p>
-        <p class="muted small">${esc(last.date)} · 参考 ${esc(last.ref)}${prev ? ` · 上次 ${num(prev.value, prev.value % 1 ? 2 : 0)}（${esc(prev.date)}）` : ''}</p>
-        ${sourceLine(last.source)}
-        <div class="divider"></div>
-        <p class="small-note">"超出范围"只是说这个数在参考区间外，<b>不是严重程度判断</b>。</p>
-      </div>`;
-    }).join('')}
-  </div>`;
+/* ---------------- 指标卡（27 号：真 3D 翻面） ---------------- */
+function metricCard(name, metrics) {
+  const { unit, rows, otherUnits } = M.seriesOf(metrics, name);
+  const last = rows[rows.length - 1];
+  const prev = rows[rows.length - 2];
+  const track = M.trackOf(name);
+  const t = M.TRACKS.find((x) => x.key === track);
+  const ref = M.parseRef(last.ref);
+  const status = M.refStatus(last.value, last.ref);
+  const delta = prev ? last.value - prev.value : null;
+  const flipped = state.flipped.has(name);
+  const basis = ref.kind === 'range'
+    ? `参考区间 ${ref.text}：本值${status ? '落在区间内' : '在区间外'}`
+    : ref.kind === 'none' ? '这张化验单没有印参考范围，无法对照' : `参考写法「${ref.text}」`;
+  return `<button class="mcard" type="button" aria-pressed="${flipped}" data-flip="${esc(name)}" aria-label="${esc(name)} 指标卡，${flipped ? '背面' : '正面'}">
+    <span class="mcard-inner">
+      <span class="mface front">
+        <span class="mc-eyebrow"><i style="background:${t.color}"></i>${esc(t.label)} · ${esc(t.hint)}</span>
+        <span class="mc-name">${esc(name)}</span>
+        <span class="mc-value">${M.num(last.value, last.value % 1 ? 2 : 0)}<small>${esc(unit)}</small></span>
+        <span class="mc-delta">${delta === null ? '只有一次记录' : `较上次 ${delta > 0 ? '↑' : delta < 0 ? '↓' : '→'} ${M.num(Math.abs(delta), Math.abs(delta) % 1 ? 2 : 0)} ${esc(unit)}（${esc(prev.date)}）`}</span>
+        <span class="mc-note">${ref.kind === 'range' ? `参考 ${esc(ref.text)}；在区间外不等于"严重"，也不构成处置建议。` : '这张单没有参考范围，只记录原值与出处。'}</span>
+        <span class="mc-foot">${rows.length} 次记录 · ${esc(last.date)} · 来源：${esc(last.source)}<em>点开看趋势</em></span>
+      </span>
+      <span class="mface back">
+        <span class="mc-name">${esc(name)} · 最近 ${rows.length} 次</span>
+        ${rows.length > 1
+      ? lineChart(rows.map((m) => ({ x: new Date(m.date).getTime(), y: m.value, label: m.date.slice(5) })), { w: 420, h: 108, unit, label: name })
+      : '<span class="mc-note">只有 1 次记录，暂不连线——一个点画不出走向。</span>'}
+        <span class="mc-note">${esc(basis)}。数值来自 ${esc(last.source)}。</span>
+        <span class="mc-foot">仅回顾已记录的值${otherUnits.length ? ` · 另有 ${otherUnits.map((u) => u.unit + '×' + u.n).join('、')} 未合并` : ''}<em>点回正面</em></span>
+      </span>
+    </span>
+  </button>`;
 }
-function viewMetricsTrend() {
+
+function viewMetrics() {
+  // 二级：0 全部指标卡 / 1 血象 / 2 肝肾与心肌 / 3 一图秀
+  switch (state.sub) {
+    case 1: return viewMetricTrack('blood');
+    case 2: return viewMetricTrack('organ');
+    case 3: return viewOneChart();
+    default: return viewMetricAll();
+  }
+}
+function viewMetricAll() {
   const p = P();
   const names = [...new Set(p.metrics.map((m) => m.name))];
-  const pick = state.metricPick && names.includes(state.metricPick) ? state.metricPick : names[0];
-  state.metricPick = pick;
-  // 同一指标可能有多个单位（g/L vs g/dL）。单位不同的数值画进一条线＝制造假趋势（P1-8）。
-  // 口径：默认只画"出现次数最多的那个单位"，其余单位在下方显式列出，不合并。
-  const all = p.metrics.filter((m) => m.name === pick);
-  const unitCount = all.reduce((acc, m) => { acc[m.unit] = (acc[m.unit] || 0) + 1; return acc; }, {});
-  const unit = Object.keys(unitCount).sort((a, b) => unitCount[b] - unitCount[a])[0] || '';
-  const otherUnits = Object.keys(unitCount).filter((u) => u !== unit);
-  const rows = all.filter((m) => m.unit === unit).sort((a, b) => a.date.localeCompare(b.date));
-  const ref = rows[0]?.ref?.match(/(\d+\.?\d*)\s*[–-]\s*(\d+\.?\d*)/);
-  const refMid = ref ? (+ref[1] + +ref[2]) / 2 : null;
-  return `${pageHead('趋势对照', '一次只看一个指标。单点不连线；跨单位不合并。', moreMenu([{ label: '这张图的画法' }]))}
+  return `${pageHead('指标卡片', '按轨道分系列排；每张卡正面六段、背面是趋势与依据。点卡片翻面。',
+    `${agentButton('我拍一张化验单', 'AI 抄化验单')}${moreMenu([{ label: '手工补一行' }, { label: '按轨道排列' }])}`)}
+  ${notice('plain', '工作台<b>不做 CTCAE 自动分级到处置</b>：只给数值、参考区间、与前次差值、出处。数值在区间外不等于"严重"，要不要处理由医生判断。')}
+  ${M.TRACKS.map((t) => {
+    const inTrack = names.filter((n) => M.trackOf(n) === t.key && p.metrics.some((m) => m.name === n));
+    if (!inTrack.length) return '';
+    return `<div class="track-head"><i style="background:${t.color}"></i><h3>${esc(t.label)}</h3><span class="muted small">${esc(t.hint)}</span></div>
+      <div class="metric-grid">${inTrack.map((n) => metricCard(n, p.metrics)).join('')}</div>`;
+  }).join('')}
+  <p class="small-note">同一轨内的指标可以并列看；<b>跨轨不可比</b>——血象、肝肾、功能测量是三套不同的量纲。</p>`;
+}
+function viewMetricTrack(trackKey) {
+  const p = P();
+  const t = M.TRACKS.find((x) => x.key === trackKey);
+  const names = [...new Set(p.metrics.map((m) => m.name))].filter((n) => M.trackOf(n) === trackKey);
+  return `${pageHead(`${t.label}指标`, `${esc(t.hint)}。每张卡正面是"最近一次 + 与前次差值 + 出处"，背面是趋势与参考依据。`,
+    `${agentButton('我拍一张化验单', 'AI 抄化验单')}${moreMenu([{ label: '手工补一行' }])}`)}
+  ${names.length === 0 ? empty(`还没有${t.label}指标`, '拍一张化验单，或手工补一行，这里就会出现卡片。')
+    : `<div class="metric-grid">${names.map((n) => metricCard(n, p.metrics)).join('')}</div>`}
+  <p class="small-note">翻面状态按指标名记住，换页回来仍是你翻过的那几张。</p>`;
+}
+
+/* ---------------- 一图秀（16 号：多指标 + 指标选择窗口） ---------------- */
+function viewOneChart() {
+  const p = P();
+  const allNames = [...new Set(p.metrics.map((m) => m.name))];
+  // 选择要按**当前档案实际有的指标**兜底：写死的默认值在另一档案里可能一条都不存在，
+  // 一图秀就会只剩一条线（甚至零条），看起来像坏了。
+  let sel = state.chartSel.filter((n) => allNames.includes(n)).slice(0, 4);
+  // 至少两条才叫"一图秀"。档案切换后原来选中的指标可能不存在（如王先生没有 WBC），
+  // 只剩一条时自动补一条**本档案真有数据**的，否则页面退化成单指标图、看不出各自归一化。
+  if (sel.length < 2) {
+    const spare = allNames.filter((n) => !sel.includes(n));
+    if (spare.length) sel = [...sel, spare[0]];
+  }
+  if (sel.length === 0) sel = allNames.slice(0, 2);
+  state.chartSel = sel;
+  const series = M.buildChartSeries(p.metrics, sel, { max: 4 });
+  const W = 760, H = 240, pad = { l: 34, r: 118, t: 20, b: 34 };
+  const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
+  const from = state.chartRange === 'all' ? null : chartRangeFrom(state.chartRange);
+  const to = null;
+  const paths = series.map((s, i) => {
+    const rows = M.windowRows(s.rows, from, to);
+    const x = (date) => pad.l + (rows.length <= 1 ? plotW * 0.5 : (new Date(date) - new Date(rows[0].date)) / ((new Date(rows[rows.length - 1].date) - new Date(rows[0].date)) || 1) * plotW);
+    const color = ['#8a5a0c', '#1f5a4d', '#b4552b', '#5b4b8a'][i % 4];
+    if (!rows.length) return `<g class="series-empty"><text class="ax" x="${pad.l + 8}" y="${pad.t + 18 + i * 14}">${esc(s.name)}：该窗口无数据</text></g>`;
+    const pts = rows.map((r) => [x(r.date), pad.t + (1 - s.norm.at(r.value)) * plotH]);
+    const d = rows.length > 1 ? smoothPath(pts) : '';
+    const circles = rows.map((r, k) => `<circle cx="${pts[k][0].toFixed(1)}" cy="${pts[k][1].toFixed(1)}" r="${k === rows.length - 1 ? 4.2 : 3}" fill="${color}" class="pt"><title>${esc(s.name)} ${M.num(r.value, 2)} ${esc(s.unit)} · ${esc(r.date)}</title></circle>`).join('');
+    const lastPt = pts[pts.length - 1];
+    const label = `<text class="mc-end" x="${Math.min(lastPt[0] + 8, W - pad.r + 4)}" y="${lastPt[1] + 3}" fill="${color}">${esc(s.name.slice(0, 8))} ${M.num(s.rows[s.rows.length - 1].value, 1)}${esc(s.unit)}</text>`;
+    return `${d ? `<path d="${d}" fill="none" stroke="${color}" stroke-width="2" class="line" pathLength="1"/>` : ''}${circles}${label}`;
+  }).join('');
+  return `${pageHead('一图秀', '多条指标同轴看"同一段时间里发生了什么"。每条线按自己的量程缩放，不能互相比数值大小。',
+    `${agentButton('我想同时看白细胞和肝酶', 'AI 选指标')}${moreMenu([{ label: '时间窗怎么选' }])}`)}
+  ${notice('violet', '每条线按<b>该指标自己的全部记录</b>缩放，所以两条线都占满纵向。<b>它们之间不可比</b>：白细胞 3.1 与 ALT 78 的高低没有共同刻度。图上只回答"什么时候在动"。')}
   <div class="overview">
     <div class="rail">
-      <h3>选指标</h3>
-      <div class="metric-list">${names.map((n) => `<button class="metric-pick${n === pick ? ' on' : ''}" data-metric="${esc(n)}">${esc(n)}<small>${p.metrics.filter((m) => m.name === n).length}</small></button>`).join('')}</div>
-      <section><h3>口径</h3><p class="small-note">同一指标、同一单位才画线；参考区间以最近一张化验单为准。</p></section>
+      <h3>选指标（最多 4 条）</h3>
+      <div class="metric-list">
+        ${allNames.map((n) => {
+    const on = sel.includes(n);
+    const s = M.seriesOf(p.metrics, n);
+    const lastV = s.rows.length ? M.num(s.rows[s.rows.length - 1].value, 1) : '—';
+    return `<button class="metric-pick${on ? ' on' : ''}" data-chart-toggle="${esc(n)}" aria-pressed="${on}">
+            <span class="mp-name">${esc(n)}</span><small>${lastV}${esc(s.unit)}</small></button>`;
+  }).join('')}
+      </div>
+      <section><h3>时间窗</h3>
+        <div class="chips">${['3m', '6m', '12m', 'all'].map((r) => `<button class="chip" data-chart-range="${r}" aria-pressed="${state.chartRange === r}">${r === 'all' ? '全部' : '近 ' + r.replace('m', ' 月')}</button>`).join('')}</div>
+      </section>
+      <section><h3>口径</h3><p class="small-note">每条线独立归一化；单点不连线；换单位不合并。</p></section>
     </div>
     <div class="stack">
       <div class="card">
-        <div class="card-head"><h2>${esc(pick)}</h2><span class="muted">${rows.length} 个点 · ${esc(unit)}</span></div>
-        ${rows.length === 0 ? empty('还没有这个指标的记录', '这一页只画已确认的数值。拍照或手工补一条之后，这里才会出现点。')
-          : rows.length === 1 ? empty('只有一个点', '单点不连线（一个点画不出走向）。再记一次就能看到变化。')
-          : lineChart(rows.map((m) => ({ x: new Date(m.date).getTime(), y: m.value, label: m.date.slice(5) })), { ref: refMid, unit, label: pick })}
-        <p class="small-note">参考区间：${esc(rows[0]?.ref || '这张单没印')}。图上的虚线只是参考区间的中点，不是判定线。</p>
-        ${otherUnits.length ? `<p class="small-note warn">这个指标还出现过别的单位（${otherUnits.map((u) => `${esc(u)} × ${unitCount[u]}`).join('、')}），<b>没有画进这条线</b>——不同单位连成一条线会看起来像数值突变。</p>` : ''}
+        <div class="card-head"><h2>时间轴</h2><span class="muted">${series.length} 条线 · ${from ? '近 ' + state.chartRange.replace('m', ' 月') : '全部时间'}</span></div>
+        ${series.length === 0
+      ? empty('还没选指标', '左侧最多选 4 条。先选一条看看，再加第二条。')
+      : `<div class="chart-wrap"><svg class="chart" viewBox="0 0 ${W} ${H}" role="img"
+            aria-label="多指标时间轴，共 ${series.length} 条线；每条按该指标自身全部记录范围缩放，各指标数值不可比">
+          <line class="axis" x1="${pad.l}" y1="${pad.t + plotH}" x2="${W - pad.r}" y2="${pad.t + plotH}"/>
+          ${paths}
+        </svg></div>`}
+        <p class="small-note">图例给的是"全部记录的 min–max"，不是正常范围。空白处表示没有记录，不是 0。</p>
       </div>
       <div class="card">
-        <div class="card-head"><h2>原始数值</h2></div>
-        <table class="table"><thead><tr><th>日期</th><th>数值</th><th>参考</th><th>出处</th></tr></thead><tbody>
-        ${rows.map((m) => `<tr><td>${esc(m.date)}</td><td><b>${num(m.value, m.value % 1 ? 2 : 0)}</b> ${esc(m.unit)}</td><td class="muted">${esc(m.ref)}</td><td class="muted small">${esc(m.source)}</td></tr>`).join('')}
+        <div class="card-head"><h2>图例（全期范围）</h2></div>
+        <table class="table"><thead><tr><th>指标</th><th>全期 min–max</th><th>单位</th><th>点数</th><th>备注</th></tr></thead><tbody>
+        ${series.map((s, i) => `<tr><td><i class="legend-dot" style="background:${['#8a5a0c', '#1f5a4d', '#b4552b', '#5b4b8a'][i % 4]}"></i>${esc(s.name)}</td>
+          <td>${s.none ? '—' : `${M.num(s.min, 1)} – ${M.num(s.max, 1)}`}</td><td>${esc(s.unit || '—')}</td><td>${s.rows.length}</td>
+          <td class="muted small">${s.single ? '只有 1 次，不连线' : s.otherUnits.length ? `另有 ${s.otherUnits.map((u) => u.unit).join('/')} 未合并` : '—'}</td></tr>`).join('')}
         </tbody></table>
       </div>
     </div>
   </div>`;
 }
+function chartRangeFrom(r) {
+  const months = r === '3m' ? 3 : r === '6m' ? 6 : r === '12m' ? 12 : 999;
+  const d = new Date(TODAY); d.setMonth(d.getMonth() - months);
+  return d.toISOString().slice(0, 10);
+}
 
-/* ---------------- follow-up ---------------- */
 function viewFollowup() {
   if (state.sub === 0) return viewFollowupCal();
   if (state.sub === 1) return viewTodo();
@@ -829,49 +914,163 @@ function viewVisitPrep() {
   </div>`;
 }
 
-/* ---------------- trials ---------------- */
+/* ---------------- trials（35 号：建档 → 匹配 → 库 → 结论边界） ---------------- */
+const MATCH = globalThis.SARCO_MATCH;
+
+/** 三态徽标：known / unknown / absent 必须一眼可分（35 号 T1）。 */
+function bioStateBadge(field) {
+  if (!field) return pill('未填写', 'grey');
+  if (field.state === 'absent') return pill('本癌种无此项', 'grey');
+  if (field.state === 'unknown') return pill('未测', 'yellow');
+  return pill('已知', 'green');
+}
+/** 一个建档字段一行：值 / 未测 / 无此项 —— 三者不能混。 */
+function bioRow(label, field, unit = '') {
+  const known = field && field.state === 'known' && (field.value || field.token || field.label);
+  const shown = known ? `${esc(field.value || field.token || field.label)}${unit ? ' ' + esc(unit) : ''}` : (field && field.state === 'absent' ? '本癌种没有这一项' : '未测');
+  return `<div class="bio-field row static">
+    <div class="row-main"><div>
+      <b>${esc(label)}</b>
+      <p class="bio-value">${shown}</p>
+      ${known && field.source ? `<small class="src">来源：${esc(field.source)}${field.date ? ' · ' + esc(field.date) : ''}</small>` : `<small class="src">${field && field.state === 'unknown' ? '未测：这项检测没做过——没做过不等于查过没问题' : '未填写'}</small>`}
+    </div></div>${bioStateBadge(field)}
+  </div>`;
+}
+
+function matchTrial(profile, trial) {
+  const patient = {
+    region: profile.bioProfile?.region?.value || null,
+    subtype: profile.bioProfile?.subtype?.value || null,
+    molecular: { token: profile.bioProfile?.molecular?.token || null },
+    ihc: { token: profile.bioProfile?.ihc?.token || null },
+  };
+  return MATCH.computeMatch(patient, trial, MATCH.DEFAULT_DIMS);
+}
+
 function viewTrials() {
+  if (state.sub === 0) return viewTrialProfile();
+  if (state.sub === 1) return viewTrialMatch();
+  if (state.sub === 2) return viewTrialLibrary();
+  return viewTrialFollow();
+}
+
+function viewTrialProfile() {
   const p = P();
-  const list = p.trials;
-  // seen = 真的从某通道取回过条目；failed = 有通道本次没取回（未配置/未查过/超时）。
-  // 这两个必须分开：0 条 + 通道失败 ≠ 没有试验（K6）。
-  const real = list.filter((t) => !/未查过|未取回|未配置/.test(t.statusText || ''));
-  const fetchedAt = real.map((t) => t.fetchedAt).filter(Boolean).sort().slice(-1)[0] || null;
-  const channelFailed = list.length > 0 && real.length < list.length;
-  const filtered = state.trialFilter === 'all' ? list : list.filter((t) => /招募/.test(t.statusText));
-  if (state.sub === 1) {
-    return `${pageHead('关注与入组', '关注的试验与入组步骤。工作台不判断你是否符合条件。', moreMenu([{ label: '加一条关注' }]))}
-    ${notice('warn', '「招募中」只表示登记库里的状态，<b>不等于你符合条件</b>。是否适合入组由研究团队评估。')}
-    <div class="card"><div class="stack">${list.map((t) => `<div class="row static"><div class="row-main"><div><b>${esc(t.registryId)} · ${esc(t.title)}</b><p>${esc(t.phase)} · ${esc(t.statusText)} · ${esc(t.siteText)}</p>${sourceLine(`${t.channel} · 采集于 ${t.fetchedAt}`)}</div></div>${pill(t.statusText, /招募/.test(t.statusText) ? 'green' : 'grey')}</div>`).join('')}</div></div>`;
-  }
-  return `${pageHead('检索入口', '按亚型与部位检索登记库。每条带来源通道与采集时间。',
-    `${agentButton('我想找滑膜肉瘤的临床研究', 'AI 拟检索条件')}`)}
+  const bp = p.bioProfile || {};
+  const known = Object.values(bp).filter((f) => f && f.state === 'known').length;
+  const unknown = Object.values(bp).filter((f) => f && f.state === 'unknown').length;
+  const absent = Object.values(bp).filter((f) => f && f.state === 'absent').length;
+  return `${pageHead('我的建档', '只填"手上有结果"的项。没做过就写"未测"——未测不等于阴性。',
+    `${agentButton('我拍一张病理/分子报告，帮我把建档项填上', 'AI 抄建档')}${moreMenu([{ label: '手工补一项' }])}`)}
+  ${notice('violet', '这份建档只用于<b>和登记库里真实存在的字段对照</b>。它不推断分型、不把"未测"写成"阴性"，也不参与任何"能不能入组"的判断。')}
+  <div class="stats-row">
+    <span><b>${known}</b> 项已知</span><span><b>${unknown}</b> 项未测</span><span><b>${absent}</b> 项本癌种无此项</span><span><b>${Object.keys(bp).length}</b> 项建档</span>
+  </div>
   <div class="card">
-    <div class="card-head"><h2>检索条件</h2></div>
-    <div class="filter-row">
-      <label class="field"><span>亚型/关键词</span><input id="trial-q" value="${esc(state.trialsQuery)}"></label>
-      <label class="field"><span>部位</span><select id="trial-site"><option>全部</option>${D.meta.sites.map((s) => `<option${s === p.site ? ' selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
-      <label class="field"><span>状态</span><select id="trial-status"><option value="all">全部</option><option value="recruiting">仅招募中</option></select></label>
-      <button class="primary" data-action="trial-search">检索</button>
+    <div class="card-head"><h2>建档项</h2><span class="muted">三态：已知 / 未测 / 本癌种无此项</span></div>
+    <div class="stack">
+      ${bioRow('所在地区（用于筛"中国境内"）', bp.region)}
+      ${bioRow('亚型（报告原文）', bp.subtype)}
+      ${bioRow('分子检测：SS18::SSX', bp.molecular)}
+      ${bioRow('免疫组化：INI1（SMARCB1）', bp.ihc)}
+      ${bioRow('分子检测：NTRK 融合', bp.ntrk)}
+      ${bioRow('分子检测：MDM2 扩增', bp.mdm2)}
     </div>
-    <p class="small-note">通道：clinicaltrials.gov · ChiCTR · 药物临床试验登记平台 · ICTRP。任一通道失败会显示"未取回"，<b>不会显示空列表冒充"没有试验"</b>。</p>
+  </div>
+  <p class="small-note">STS 的入组关键项通常是<b>亚型 + 分子（如 SS18::SSX、MDM2 扩增）+ 部位</b>；没有对应基因的项写"本癌种无此项"，不硬塞。</p>`;
+}
+
+function viewTrialMatch() {
+  const p = P();
+  const trials = p.trials.filter((t) => !t.notFetched);
+  const rows = trials.map((t) => ({ trial: t, m: matchTrial(p, t) })).sort((a, b) => (b.m.index ?? -1) - (a.m.index ?? -1));
+  return `${pageHead('匹配结果', '指数只说"登记信息对得上多少"，不是"我能不能入组"。',
+    `${agentButton('帮我看看哪些研究和我对得上', 'AI 协助匹配')}${moreMenu([{ label: '指数怎么算' }])}`)}
+  ${notice('warn', `<b>这不是"能不能入组"的答案。</b>它只对登记库里<b>真实存在</b>的字段做归一化：本次参与计算最多 <b>${Math.max(0, ...rows.map((r) => r.m.knownDims))}</b> 个维度，另有 <b>${MATCH.DEFAULT_DIMS.length}</b> 个维度按登记库有无决定算不算，以及 <b>${rows[0]?.m.notComputable.length ?? 3}</b> 类永远不进分母的缺口（入排标准、生物标志阈值、年龄区间）。<b>缺口不当 0 分</b>；是否适合由研究团队评估。`)}
+  <div class="card">
+    <div class="card-head"><h2>指数口径</h2><span class="muted">35 号规范</span></div>
+    <ol class="fmt-list">${MATCH.INDEX_FORMAT.map((t) => `<li>${t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</li>`).join('')}</ol>
+  </div>
+  <div class="stack" style="margin-top:14px">
+    ${rows.map(({ trial: t, m }) => `<div class="card match-card">
+      <div class="card-head">
+        <div><h2>${esc(t.title)}</h2>
+          <p class="muted small">${esc(t.registryId)} · ${esc(t.phase)} · ${esc(t.siteText)} · 状态 ${esc(t.statusText)}</p></div>
+        <div class="match-index ${m.index === null ? 'null' : ''}">
+          <b>${m.index === null ? '无分数' : m.index}</b>
+          <span>${m.index === null ? '你这边没有可算的维度' : `对得上 ${m.knownDims}/${m.totalDims} 维`}</span>
+        </div>
+      </div>
+      <div class="match-dims">
+        ${m.detail.map((d) => `<span class="dim ${d.score === null ? 'skip' : d.score >= 0.9 ? 'ok' : d.score > 0 ? 'part' : 'no'}"
+          title="${esc(d.label)}：患者=${esc(d.patient ?? '未测')}；登记=${esc(d.trial ?? '库内无此字段')}">
+          ${esc(d.label.slice(0, 10))} ${d.score === null ? '不计' : Math.round(d.score * 100) + '%'}</span>`).join('')}
+      </div>
+      <p class="small-note">${m.missing.length ? `未计入分母的 ${m.missing.length} 项：${m.missing.map((x) => esc(x.label) + (x.reason === 'unknown' ? '（你未测）' : x.reason === 'absent' ? '（本癌种无）' : '（库内无）')).join('；')}` : '所有维度都参与了计算。'}</p>
+      <div class="actions" style="margin-top:8px">
+        <button class="soft" data-action="trial-watch" data-id="${esc(t.id)}">${t.watched ? '已关注' : '加入关注'}</button>
+      </div>
+      ${sourceLine(`${t.channel} · 采集于 ${t.fetchedAt}`)}
+    </div>`).join('')}
   </div>
   <div class="card" style="margin-top:14px">
-    <div class="card-head"><h2>结果</h2><span class="muted">${filtered.length
-      ? `${filtered.length} 条 · 采集于 ${esc(fetchedAt || '未记录')}`
-      : (channelFailed ? '本次没能取回 · 不是"没有试验"' : `0 条 · 采集于 ${esc(fetchedAt || '未记录')}`)}</span></div>
+    <div class="card-head"><h2>永远不进分母的维度</h2></div>
+    <div class="rows">${(rows[0]?.m.notComputable || []).map((x) => `<div class="row static"><div class="row-main"><div><b>${esc(x.label)}</b><p>${esc(x.why)}</p></div></div></div>`).join('')}</div>
+  </div>`;
+}
+
+function viewTrialLibrary() {
+  const p = P();
+  const list = p.trials;
+  const real = list.filter((t) => !t.notFetched);
+  const fetchedAt = real.map((t) => t.fetchedAt).filter(Boolean).sort().slice(-1)[0] || null;
+  const channelFailed = list.some((t) => t.notFetched);
+  const byChannel = {};
+  for (const t of list) (byChannel[t.channel] = byChannel[t.channel] || []).push(t);
+  return `${pageHead('试验库', '本地库里的条目 + 每个通道本次到底取回了什么。',
+    `${agentButton('重新检索四个通道', 'AI 拟检索')}${moreMenu([{ label: '离线库覆盖说明' }])}`)}
+  ${notice('plain', '通道终态不合并：<b>unsupported / timeout 的"0 条"不代表没有研究</b>，只代表这次没查通。')}
+  <div class="card">
+    <div class="card-head"><h2>通道终态</h2><span class="muted">${channelFailed ? '有通道未取回' : '全部取回'}</span></div>
+    <table class="table"><thead><tr><th>通道</th><th>终态</th><th>条数</th><th>说明</th></tr></thead><tbody>
+      ${Object.entries(byChannel).map(([ch, items]) => {
+    const failed = items.every((t) => t.notFetched);
+    return `<tr><td><b>${esc(ch)}</b></td>
+        <td>${failed ? pill('未取回', 'yellow') : pill('ready', 'green')}</td>
+        <td>${failed ? '—' : items.length}</td>
+        <td class="muted small">${failed ? '本轮未查通；<b>0 条不代表没有研究</b>' : items.map((t) => t.statusText).join(' / ')}</td></tr>`;
+  }).join('')}
+    </tbody></table>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="card-head"><h2>条目</h2><span class="muted">${real.length} 条 · 采集于 ${esc(fetchedAt || '未记录')}</span></div>
     <div class="stack">
-    ${filtered.length === 0 ? `<div class="empty-state"><b>${channelFailed ? '有通道没取回，不是"没有试验"' : '按当前条件没有匹配到'}</b>
-      <p>${channelFailed ? '下面列出的通道里有本次没取回的。空白不代表这个亚型没有在研研究，只代表<b>这次没查到</b>。' : '可以放宽亚型关键词或把状态改成"全部"再查一次。'}</p>
-      <p class="small-note">${list.map((t) => `${esc(t.channel)}：${esc(t.statusText)}`).join(' · ') || '还没有任何通道的采集记录'}</p></div>` : ''}
-    ${filtered.map((t) => `<div class="trial-row">
-      <div><b>${esc(t.title)}</b><p class="muted small">${esc(t.registryId)} · ${esc(t.phase)} · ${esc(t.siteText)}</p>
-      <p class="small">${esc(t.matchNote)}</p>
-      ${sourceLine(`${t.channel} · 采集于 ${t.fetchedAt}`)}</div>
-      <div class="actions">${pill(t.statusText, /招募/.test(t.statusText) ? 'green' : /未/.test(t.statusText) ? 'grey' : 'yellow')}${moreMenu([{ label: '看登记原文' }, { label: '加入关注' }])}</div>
-    </div>`).join('')}
+      ${real.length === 0 ? `<div class="empty-state"><b>还没有取回任何条目</b><p>空白不代表这个亚型没有在研研究，只代表<b>这次没查到</b>。</p></div>`
+      : real.map((t) => `<div class="trial-row">
+        <div><b>${esc(t.title)}</b><p class="muted small">${esc(t.registryId)} · ${esc(t.phase)} · ${esc(t.siteText)}</p>
+        <p class="small">${esc(t.matchNote)}</p>${sourceLine(`${t.channel} · 采集于 ${t.fetchedAt}`)}</div>
+        <div class="actions">${pill(t.statusText, /招募/.test(t.statusText) ? 'green' : 'grey')}</div>
+      </div>`).join('')}
     </div>
-    <p class="small-note">离线语料目前只覆盖胰腺癌，软组织肉瘤<b>无离线覆盖</b>——所以标"未配置"的通道就是真的没查过。</p>
+    <p class="small-note">离线语料只覆盖胰腺癌，STS <b>无离线覆盖</b>——标"未查过"的通道是真的没查过。</p>
+  </div>`;
+}
+
+function viewTrialFollow() {
+  const p = P();
+  const watched = p.trials.filter((t) => t.watched);
+  return `${pageHead('关注与入组', '关注的试验与联系入口。工作台不判断你是否符合条件。', moreMenu([{ label: '加一条关注' }]))}
+  ${notice('warn', '「招募中」只表示登记库里的状态，<b>不等于你符合条件</b>。是否适合入组由研究团队评估。')}
+  <div class="card"><div class="head-row"><h2>已关注</h2><span class="muted">${watched.length} 条</span></div>
+    ${watched.length ? `<div class="stack">${watched.map((t) => `<div class="row static"><div class="row-main"><div><b>${esc(t.registryId)} · ${esc(t.title)}</b><p>${esc(t.phase)} · ${esc(t.statusText)}</p></div></div>${pill(t.statusText, 'green')}</div>`).join('')}</div>`
+      : `<p class="muted small">还没有关注的试验。到「匹配结果」里挑一条点"加入关注"。</p>`}
+  </div>
+  <div class="card" style="margin-top:14px"><div class="card-head"><h2>联系前准备</h2></div>
+    <div class="rows">
+      ${row('准备好病理与分子报告', '研究团队通常先看亚型与分子检测结果', 'data-action="noop"')}
+      ${row('问清入排标准', '登记页写的入排是概要，具体以研究方案为准', 'data-action="noop"')}
+      ${row('记录联系人与日期', '每次沟通记一条，下次带得上', 'data-action="noop"')}
+    </div>
   </div>`;
 }
 
@@ -1101,6 +1300,31 @@ function bind() {
   });
   $$('[data-metric]').forEach((b) => b.onclick = () => { state.metricPick = b.dataset.metric; render(); });
   $$('[data-action]').forEach((b) => b.onclick = () => act(b.dataset.action, b));
+  // 27 号 §3：翻面只改 aria-pressed 与隐藏面的 inert，不重建 DOM——
+  // 重绘会打断 480ms 过渡，也会让"翻一张别的卡跟着复位"。
+  $$('[data-flip]').forEach((card) => {
+    card.onclick = (e) => {
+      e.stopPropagation();
+      const key = card.dataset.flip;
+      const on = !state.flipped.has(key);
+      if (on) state.flipped.add(key); else state.flipped.delete(key);
+      card.setAttribute('aria-pressed', String(on));
+      const front = card.querySelector('.mface.front');
+      const back = card.querySelector('.mface.back');
+      if (front) { front.inert = on; front.setAttribute('aria-hidden', String(on)); }
+      if (back) { back.inert = !on; back.setAttribute('aria-hidden', String(!on)); }
+    };
+  });
+  // 一图秀：选指标 / 切时间窗只重绘图表区域所在页（当前实现整页重渲染，但保留 state）
+  $$('[data-chart-toggle]').forEach((b) => b.onclick = () => {
+    const n = b.dataset.chartToggle;
+    const i = state.chartSel.indexOf(n);
+    if (i >= 0) state.chartSel.splice(i, 1);
+    else if (state.chartSel.length >= 4) return showToast('最多同时看 4 条线——再多就分不清颜色了（先取消一条）');
+    else state.chartSel.push(n);
+    render();
+  });
+  $$('[data-chart-range]').forEach((b) => b.onclick = () => { state.chartRange = b.dataset.chartRange; render(); });
   $$('#trial-status').forEach((s) => s.onchange = () => { state.trialFilter = s.value; render(); });
   const tq = $('#trial-q'); if (tq) tq.onchange = () => { state.trialsQuery = tq.value; render(); };
   const expFrom = $('#exp-from'); if (expFrom) expFrom.onchange = () => { state.exportOpts.from = expFrom.value; render(); };
@@ -1168,7 +1392,21 @@ function act(action, el) {
     }
     case 'expand-all': $$('.phase-fold').forEach((d) => { d.open = true; }); return;
     case 'collapse-all': $$('.phase-fold').forEach((d) => { d.open = false; }); return;
-    case 'trial-search': showToast('检索完成：2 条命中，1 个通道未取回（演示）'); return render();
+    case 'trial-search': {
+      const p = P();
+      const real = p.trials.filter((t) => !t.notFetched).length;
+      const failed = p.trials.length - real;
+      showToast(`检索完成：${real} 条取回${failed ? `，${failed} 个通道未取回（0 条不代表没有研究）` : ''}`);
+      return render();
+    }
+    case 'trial-watch': {
+      const p = P();
+      const t = p.trials.find((x) => x.id === el?.dataset.id);
+      if (!t) return;
+      t.watched = !t.watched;
+      showToast(t.watched ? `已关注 ${t.registryId}` : `已取消关注 ${t.registryId}`);
+      return render();
+    }
     case 'export-prep': {
       const sheet = buildVisitPrepSheet(P());
       state.lastExport = { kind: 'prep-sheet', filtered: sheet.viewpointFiltered, items: sheet.questions.length };

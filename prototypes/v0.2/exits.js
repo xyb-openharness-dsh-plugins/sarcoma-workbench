@@ -60,6 +60,9 @@
       local: pick(p.local), systemic: pick(p.systemic),
       metrics: pick(p.metrics), functionLog: pick(p.functionLog),
       visits: pick(p.visits), trials: pick(p.trials),
+      // 建档（35 号）：地区/亚型/分子/IHC 是就诊沟通要用的客观项，随快照带走。
+      // 它不含私密内容，所以不走 privateOn 开关；但演示态整包被 in_use 挡住。
+      bioProfile: opts.demoOn === false ? {} : (p.bioProfile || {}),
       viewpoint: opts.privateOn ? pick(p.viewpoint) : [],
       fertility: opts.privateOn ? pick(p.fertility) : [],
       viewpointFiltered: opts.privateOn ? 0 : allPrivate(p),

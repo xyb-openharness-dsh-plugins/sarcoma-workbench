@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- |
 | **M0 骨架** | 认领（issue #32 `claimed`）+ private 仓 + init（168 文件）+ cordis `config.root` + 文档 9 件 | `npm run check` 的 `staticPass=true`；9 件文档原创 | ✅ 实测（check 绿 + 已 push e584ea1） | `check` 输出见 §3 |
 | **M1 调研SPEC** | 三路调研（医学 10 主题 / NMPA / 家族对比）+ DIFF-MATRIX 实测 + SPEC + USER-RESEARCH + INTERACTION-DESIGN 全量 | 一级重名率实测 ≤70%；K1–K6 落文档 | 🔧 三路调研完成、文档全量，**G1 待签认** | `DIFF-MATRIX.md` §1 · `research/medical/`（510 行 36 条）· `research/regulatory/NMPA-VERIFICATION.md` |
-| **M2 原型** | demo 构建器（双档案 × 6 月唯一源）+ prototypes/v0.2 四件套 + 折叠卡 + HVT X1–X4 + 独立评审 + README ≥4 截图 | 页签走查数字；computed fill=none；窄宽 0 问题；禁词 0；**独立评审 P0 = 0** | 🔧 独立评审出 6 条 P0 → 全部修复并复验 → **P0 = 0**；待 G2 用户签认 | `docs/PROTOTYPE-INDEPENDENT-REVIEW.md` · `docs/P0-FIX-TRAIL.md` |
+| **M2 原型** | demo 构建器 + prototypes/v0.2（11 一级 / 35 二级）+ 折叠卡 + 指标卡 3D + 一图秀 + 试验匹配 + HVT X1–X4 + 独立评审 + 第二轮用户反馈 | 页签走查；独立评审 P0 = 0；27/16/35 号规范逐条实测 | 🔧 P0 = 0；第二轮三条反馈已实现并实测（35/35 页签、276px 3D、一图秀 2 线、匹配 T1–T9）；待 G2 复签 | `docs/PROTOTYPE-INDEPENDENT-REVIEW.md` · `docs/P0-FIX-TRAIL.md` · `docs/SPEC.md` §14 |
 | **M3 数据模型** | schema/0001 + freeze-contract(sha256) + 判读列断言 | 内存全建；无 diagnosis/risk_level 类列 | ⏳ | — |
 | **M4 临床库** | fetch-sarcoma-trials 脚本（四通道）+ research 四件套 | manifest=jsonl=sqlite；FAILED 如实 | ⏳ | — |
 | **M5 开发版** | 七步移植 + MinerU 六部件 + apiBase 契约 + test 五套 | 版本同源；单测全过；tgz 占位=0 | ⏳ | — |
@@ -112,7 +112,7 @@ $ npm run check
 | 判据 | 实测 |
 | --- | --- |
 | 一级导航 = 11，名称逐字一致 | 11/11，`names_match=true` |
-| 二级页签 = 32，全部点开 | 32/32，visited=33 |
+| 二级页签 = 35，全部点开 | 35/35，visited=36 |
 | 空页 | 0 |
 | 0 未捕获异常 / 0 console error / 0 失败请求 | 0 / 0 / 0 |
 | 折叠卡：卡数 / 默认展开 / 五块顺序 | 4 张（两档案）/ 0 / 4 张全对 |
@@ -172,3 +172,23 @@ $ npm run check
 | `npm test` | 25 pass / 0 fail（原 14 pass，其中 1 条是自欺，已删并换成 9 条跑产品源码的） |
 | `verify-prototype.py` | ok=true；0 空页 / 0 禁词 / 0 溢出 / 0 异常 |
 | `npm run check` | staticPass: true, errors: [] |
+
+## 12. M2 第二轮：用户三条反馈（2026-10-25 晚）
+
+用户看原型后提三条（原话见 `docs/SPEC.md` §14）：
+① 指标卡要有"有序、分系列、动态 3D 反转"；② 一图秀要加指标选择窗口；③ 临床试验应按"建档 → 匹配 → 库 → 结论边界"做，带匹配指数与格式。
+
+**这三条推翻了 ADR-3 的一半**：原 ADR-3 写"STS 无贯穿指标，故不做一图秀"。用户要求做，决定作废——**理由修正为**：STS 没有单一贯穿指标是对的，但正因如此"多指标同轴、各自归一化、明写不可比"才更有用。ADR-3 里"影像不做数值趋势"的部分保留（那涉及判读）。
+
+| 项 | 落点 | 规范 | 实测 |
+| --- | --- | --- | --- |
+| 指标卡 | `metrics/0` 全部指标卡 + 按轨道分系列（血象 / 肝肾与心肌 / 功能测量） | 27 号 | 外框 276px、翻面后卡高仍 276、内层 `matrix3d(...)`、翻一张其余 `aria-pressed=false`、6 个面 / 3 张卡 |
+| 一图秀 | `metrics/3` 多指标 + 指标选择窗口（≤4、独立滚动、各显最新值） | 16 号 | 2 条线 6 个点、两条线各自占满（186/186）、aria 逐字含"不可比"、选择数 2 ≤ 4 |
+| 试验匹配 | `trials/0` 建档（三态）/ `trials/1` 匹配（指数+维度+缺口）/ `trials/2` 库（通道终态）/ `trials/3` 关注 | 35 号 | 建档 6 项含 2 项"未测"+1 项"本癌种无此项"；匹配 3 张卡指数 100/87/50；引号外无入组结论词；`test/match.test.mjs` 10 条 T1–T9 |
+
+**结构变化**：二级 32 → **35**（指标线拆 4：全部指标卡/血象/肝肾与心肌/一图秀；试验线拆 4：建档/匹配/库/关注）。26 号下限 ≥20 仍满足，单条一级内二级最多 4。
+
+**本轮审计抓到的三个问题（并行实现里带进来的）**：
+1. 匹配页 notice 里 `N`/`M` 是**字面占位符**没有插值 → 改为按实际维度数插值。
+2. 建档页数据只有"已知"一种态，页面却宣称"三态可分"（35 号 T1 不成立）→ 补 `NTRK（未测）`、`MDM2（本癌种无此项）`，统计行加"无此项"计数。
+3. `test/match.test.mjs` 的 T5b 拿 demo 数据的分子状态当断言前提，改一次演示数据就误报 → 改用**合成档案**，并补一条"填上分子后分数必须变"的反向断言。

@@ -129,7 +129,7 @@ G2 门槛：X1–X4 全 1 → **已满足**（§7）；但 G 级缺口不因 G2 
 
 | 项 | 对象 | 结果 | 证据 |
 | --- | --- | --- | --- |
-| X1 页面覆盖 | 11 一级 × 32 二级 全部 `(view,sub)` | **1** | 一级 11/11 名称逐字一致（`names_match=true`）；二级 32/32；穷举 visited=33；孤儿页 **0**（32 个二级与 SCENARIOS S01–S16 双向映射见 INTERACTION-DESIGN IP2） |
+| X1 页面覆盖 | 11 一级 × 35 二级 全部 `(view,sub)` | **1** | 一级 11/11 名称逐字一致（`names_match=true`）；二级 35/35；穷举 visited=36；孤儿页 **0**（35 个二级与 SCENARIOS S01–S16 双向映射见 INTERACTION-DESIGN IP2） |
 | X2 路径走通 | INTERACTION-DESIGN 的 16 条路径 | **1（抽验）** | 6 条入口文案逐字一致（见 `docs/HVT-PROTOTYPE-WALKTHROUGH.md` §三）；全量 16 条逐字 diff 待 M5 的 `check-ip3-wording.mjs` |
 | X3 通道一致 | 每页编辑入口 / AI 候选闭环 / 删除文案 | **1** | AI 入口统一 `data-action="agent-draft"`；手工入口统一收在 `⋯ 更多`（含"手工补一条/改这一条/看原文"）；`grep "不可恢复"` = 0；候选卡三键「确认 / 不对，改一下 / 全部拒收（零副作用）」 |
 | X4 无头断言 | 走查证据形式 | **1** | 0 未捕获异常 / 0 console error / 0 失败请求；三档宽度（1440/1080/860）溢出 0；禁词 0；垃圾值 0；`[hidden]` 生效；页脚贴底 true |

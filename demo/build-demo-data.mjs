@@ -176,16 +176,47 @@ const P1 = {
       summaryText: '', recorder: 'patient', planned: 1,
     },
   ],
+  // ① 个人建档（35 号 §2.1）：每个字段三态 —— known / unknown / absent。
+  // 未测必须写成"未测"，不能写成"阴性"；本癌种没有的项写 absent。
+  // 三态必须**同页都看得到**才叫"可分"（35 号 T1）。所以这份档案刻意留了三种：
+  // known（地区/亚型/分子）、unknown（NTRK——没做过，写"未测"）、absent（MDM2——滑膜肉瘤不以它作诊断依据，写"本癌种无此项"）。
+  bioProfile: {
+    region: { value: '中国', state: 'known', source: '就诊医院所在地', date: '2025-04-01' },
+    subtype: { value: '滑膜肉瘤', state: 'known', source: '术后病理报告 2025-05-08', date: '2025-05-08' },
+    molecular: { token: 'SS18-SSX1', label: 'SS18::SSX1 融合', state: 'known', source: 'FISH 报告 2025-05-08', date: '2025-05-08' },
+    ihc: { token: null, label: 'INI1（SMARCB1）', state: 'known', value: '保留表达', source: 'IHC 报告 2025-05-08', date: '2025-05-08' },
+    ntrk: { token: null, label: 'NTRK 融合', state: 'unknown', source: null, date: null, note: '没做过这项检测；未测不等于阴性' },
+    mdm2: { token: null, label: 'MDM2 扩增', state: 'absent', source: null, date: null, note: '滑膜肉瘤不以 MDM2 扩增作为诊断依据，本项对本癌种无意义' },
+  },
+  // 试验条目带"匹配维度"所需的登记字段。**只放登记库里真有的**；
+  // 入排标准/生物标志阈值/年龄区间不建字段（35 号 §2.2 明确不进分母）。
   trials: [
     {
       id: 'tr1', registryId: 'NCT04719156', title: '滑膜肉瘤术后辅助治疗研究（示例）',
       phase: 'II 期', statusText: '招募中', siteText: '北京 / 上海',
       channel: 'clinicaltrials.gov', fetchedAt: '2026-10-25', matchNote: '按亚型「滑膜肉瘤」命中',
+      country: '中国 / China', statusCode: 'RECRUITING', subtype: '滑膜肉瘤',
+      molecularToken: 'SS18-SSX1', ihcToken: null,
     },
     {
       id: 'tr2', registryId: 'ChiCTR2300000000', title: '晚期软组织肉瘤靶向治疗真实世界研究（示例）',
-      phase: '观察性', statusText: '未查过', siteText: '—',
-      channel: 'chictr_online', fetchedAt: '2026-10-25', matchNote: '通道未取回，状态未知',
+      phase: '观察性', statusText: '招募中', siteText: '上海',
+      channel: 'chictr_online', fetchedAt: '2026-10-25', matchNote: '按亚型「软组织肉瘤」命中（未细分）',
+      country: '中国 / China', statusCode: 'RECRUITING', subtype: 'both',
+      molecularToken: null, ihcToken: null,
+    },
+    {
+      id: 'tr3', registryId: 'NCT06000001', title: 'INI1 缺失上皮样肉瘤 EZH2 抑制剂研究（示例）',
+      phase: 'I/II 期', statusText: '招募中', siteText: '美国',
+      channel: 'clinicaltrials.gov', fetchedAt: '2026-10-25', matchNote: '按 IHC「INI1 缺失」命中',
+      country: '美国 / United States', statusCode: 'RECRUITING', subtype: '上皮样肉瘤',
+      molecularToken: null, ihcToken: 'INI1缺失',
+    },
+    {
+      id: 'tr4', registryId: '—', title: '（药物临床试验登记平台）', phase: '—', statusText: '未查过',
+      siteText: '—', channel: 'chinadrugtrials', fetchedAt: '2026-10-25',
+      matchNote: '通道未配置，未查过', country: null, statusCode: null, subtype: null,
+      molecularToken: null, ihcToken: null, notFetched: 1,
     },
   ],
   viewpoint: [
@@ -335,10 +366,27 @@ const P2 = {
   visits: [
     { id: 'vp2_1', date: '2026-09-25', purpose: '复发后方案讨论', questions: ['口服靶向效果不好，还有什么选择？', '肾功能在下降，和单肾有关吗？', '临床试验入组需要什么条件？'], summaryText: '医生：可考虑研究入组，肾功能需每月复查。', recorder: 'caregiver' },
   ],
+  bioProfile: {
+    region: { value: '中国', state: 'known', source: '就诊医院所在地', date: '2024-11-01' },
+    subtype: { value: '去分化脂肪肉瘤', state: 'known', source: '术后病理报告 2024-11-28', date: '2024-11-28' },
+    // 去分化脂肪肉瘤的分子线索是 MDM2 扩增（已知）；SS18::SSX 与 INI1 外院没做 → 显式"未测"。
+    // 未测不能当"阴性"，否则会把患者系统性地挡在所有研究之外。
+    molecular: { token: 'MDM2扩增', label: 'MDM2 扩增', state: 'known', source: 'FISH 报告 2024-11-28', date: '2024-11-28' },
+    ihc: { token: null, label: 'INI1（SMARCB1）', state: 'unknown', source: null, date: null },
+    ntrk: { token: null, label: 'NTRK 融合', state: 'unknown', source: null, date: null },
+    mdm2: { token: 'MDM2扩增', label: 'MDM2 扩增', state: 'known', source: 'FISH 报告 2024-11-28', date: '2024-11-28' },
+  },
   trials: [
-    { id: 'trp1', registryId: 'NCT05555555', title: '去分化脂肪肉瘤 MDM2 靶向研究（示例）', phase: 'I/II 期', statusText: '招募中', siteText: '上海 / 广州', channel: 'clinicaltrials.gov', fetchedAt: '2026-10-25', matchNote: '按亚型 + 分子「MDM2 扩增」命中' },
-    { id: 'trp2', registryId: 'ChiCTR2400000000', title: '腹膜后肉瘤多学科随访研究（示例）', phase: '观察性', statusText: '未取回', siteText: '—', channel: 'chictr_online', fetchedAt: '2026-10-25', matchNote: '通道超时，未取回' },
-    { id: 'trp3', registryId: '—', title: '（药物临床试验登记平台）', phase: '—', statusText: '未查过', siteText: '—', channel: 'chinadrugtrials', fetchedAt: '2026-10-25', matchNote: '通道未配置，未查过' },
+    { id: 'trp1', registryId: 'NCT05555555', title: '去分化脂肪肉瘤 MDM2 靶向研究（示例）', phase: 'I/II 期', statusText: '招募中', siteText: '上海 / 广州', channel: 'clinicaltrials.gov', fetchedAt: '2026-10-25', matchNote: '按亚型 + 分子「MDM2 扩增」命中',
+      country: '中国 / China', statusCode: 'RECRUITING', subtype: '去分化脂肪肉瘤', molecularToken: 'MDM2扩增', ihcToken: null },
+    { id: 'trp2', registryId: 'ChiCTR2400000000', title: '腹膜后肉瘤多学科随访研究（示例）', phase: '观察性', statusText: '招募中', siteText: '北京', channel: 'chictr_online', fetchedAt: '2026-10-25', matchNote: '按部位「腹膜后」命中',
+      country: '中国 / China', statusCode: 'NOT_YET_RECRUITING', subtype: 'both', molecularToken: null, ihcToken: null },
+    { id: 'trp3', registryId: 'NCT07000002', title: '晚期软组织肉瘤免疫联合研究（示例）', phase: 'II 期', statusText: '招募中', siteText: '美国',
+      channel: 'clinicaltrials.gov', fetchedAt: '2026-10-25', matchNote: '未限定亚型',
+      country: '美国 / United States', statusCode: 'RECRUITING', subtype: null, molecularToken: null, ihcToken: null },
+    { id: 'trp4', registryId: '—', title: '（药物临床试验登记平台）', phase: '—', statusText: '未取回', siteText: '—',
+      channel: 'chinadrugtrials', fetchedAt: '2026-10-25', matchNote: '通道超时，未取回',
+      country: null, statusCode: null, subtype: null, molecularToken: null, ihcToken: null, notFetched: 1 },
   ],
   viewpoint: [
     { id: 'vpp1', date: '2026-09-12', mood: '累', text: '第三次住院了，不知道还能撑几轮，家里人都瞒着他说。', visibility: 'private', recorder: 'caregiver', domain: 'fear' },

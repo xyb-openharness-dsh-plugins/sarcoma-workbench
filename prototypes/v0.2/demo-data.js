@@ -511,6 +511,51 @@ window.DEMO = {
           "in_use": 1
         }
       ],
+      "bioProfile": {
+        "region": {
+          "value": "中国",
+          "state": "known",
+          "source": "就诊医院所在地",
+          "date": "2025-04-01"
+        },
+        "subtype": {
+          "value": "滑膜肉瘤",
+          "state": "known",
+          "source": "术后病理报告 2025-05-08",
+          "date": "2025-05-08"
+        },
+        "molecular": {
+          "token": "SS18-SSX1",
+          "label": "SS18::SSX1 融合",
+          "state": "known",
+          "source": "FISH 报告 2025-05-08",
+          "date": "2025-05-08"
+        },
+        "ihc": {
+          "token": null,
+          "label": "INI1（SMARCB1）",
+          "state": "known",
+          "value": "保留表达",
+          "source": "IHC 报告 2025-05-08",
+          "date": "2025-05-08"
+        },
+        "ntrk": {
+          "token": null,
+          "label": "NTRK 融合",
+          "state": "unknown",
+          "source": null,
+          "date": null,
+          "note": "没做过这项检测；未测不等于阴性"
+        },
+        "mdm2": {
+          "token": null,
+          "label": "MDM2 扩增",
+          "state": "absent",
+          "source": null,
+          "date": null,
+          "note": "滑膜肉瘤不以 MDM2 扩增作为诊断依据，本项对本癌种无意义"
+        }
+      },
       "trials": [
         {
           "visibility": "shared",
@@ -523,6 +568,11 @@ window.DEMO = {
           "channel": "clinicaltrials.gov",
           "fetchedAt": "2026-10-25",
           "matchNote": "按亚型「滑膜肉瘤」命中",
+          "country": "中国 / China",
+          "statusCode": "RECRUITING",
+          "subtype": "滑膜肉瘤",
+          "molecularToken": "SS18-SSX1",
+          "ihcToken": null,
           "in_use": 1
         },
         {
@@ -531,11 +581,53 @@ window.DEMO = {
           "registryId": "ChiCTR2300000000",
           "title": "晚期软组织肉瘤靶向治疗真实世界研究（示例）",
           "phase": "观察性",
-          "statusText": "未查过",
-          "siteText": "—",
+          "statusText": "招募中",
+          "siteText": "上海",
           "channel": "chictr_online",
           "fetchedAt": "2026-10-25",
-          "matchNote": "通道未取回，状态未知",
+          "matchNote": "按亚型「软组织肉瘤」命中（未细分）",
+          "country": "中国 / China",
+          "statusCode": "RECRUITING",
+          "subtype": "both",
+          "molecularToken": null,
+          "ihcToken": null,
+          "in_use": 1
+        },
+        {
+          "visibility": "shared",
+          "id": "tr3",
+          "registryId": "NCT06000001",
+          "title": "INI1 缺失上皮样肉瘤 EZH2 抑制剂研究（示例）",
+          "phase": "I/II 期",
+          "statusText": "招募中",
+          "siteText": "美国",
+          "channel": "clinicaltrials.gov",
+          "fetchedAt": "2026-10-25",
+          "matchNote": "按 IHC「INI1 缺失」命中",
+          "country": "美国 / United States",
+          "statusCode": "RECRUITING",
+          "subtype": "上皮样肉瘤",
+          "molecularToken": null,
+          "ihcToken": "INI1缺失",
+          "in_use": 1
+        },
+        {
+          "visibility": "shared",
+          "id": "tr4",
+          "registryId": "—",
+          "title": "（药物临床试验登记平台）",
+          "phase": "—",
+          "statusText": "未查过",
+          "siteText": "—",
+          "channel": "chinadrugtrials",
+          "fetchedAt": "2026-10-25",
+          "matchNote": "通道未配置，未查过",
+          "country": null,
+          "statusCode": null,
+          "subtype": null,
+          "molecularToken": null,
+          "ihcToken": null,
+          "notFetched": 1,
           "in_use": 1
         }
       ],
@@ -1183,6 +1275,48 @@ window.DEMO = {
           "in_use": 1
         }
       ],
+      "bioProfile": {
+        "region": {
+          "value": "中国",
+          "state": "known",
+          "source": "就诊医院所在地",
+          "date": "2024-11-01"
+        },
+        "subtype": {
+          "value": "去分化脂肪肉瘤",
+          "state": "known",
+          "source": "术后病理报告 2024-11-28",
+          "date": "2024-11-28"
+        },
+        "molecular": {
+          "token": "MDM2扩增",
+          "label": "MDM2 扩增",
+          "state": "known",
+          "source": "FISH 报告 2024-11-28",
+          "date": "2024-11-28"
+        },
+        "ihc": {
+          "token": null,
+          "label": "INI1（SMARCB1）",
+          "state": "unknown",
+          "source": null,
+          "date": null
+        },
+        "ntrk": {
+          "token": null,
+          "label": "NTRK 融合",
+          "state": "unknown",
+          "source": null,
+          "date": null
+        },
+        "mdm2": {
+          "token": "MDM2扩增",
+          "label": "MDM2 扩增",
+          "state": "known",
+          "source": "FISH 报告 2024-11-28",
+          "date": "2024-11-28"
+        }
+      },
       "trials": [
         {
           "visibility": "shared",
@@ -1195,6 +1329,11 @@ window.DEMO = {
           "channel": "clinicaltrials.gov",
           "fetchedAt": "2026-10-25",
           "matchNote": "按亚型 + 分子「MDM2 扩增」命中",
+          "country": "中国 / China",
+          "statusCode": "RECRUITING",
+          "subtype": "去分化脂肪肉瘤",
+          "molecularToken": "MDM2扩增",
+          "ihcToken": null,
           "in_use": 1
         },
         {
@@ -1203,24 +1342,53 @@ window.DEMO = {
           "registryId": "ChiCTR2400000000",
           "title": "腹膜后肉瘤多学科随访研究（示例）",
           "phase": "观察性",
-          "statusText": "未取回",
-          "siteText": "—",
+          "statusText": "招募中",
+          "siteText": "北京",
           "channel": "chictr_online",
           "fetchedAt": "2026-10-25",
-          "matchNote": "通道超时，未取回",
+          "matchNote": "按部位「腹膜后」命中",
+          "country": "中国 / China",
+          "statusCode": "NOT_YET_RECRUITING",
+          "subtype": "both",
+          "molecularToken": null,
+          "ihcToken": null,
           "in_use": 1
         },
         {
           "visibility": "shared",
           "id": "trp3",
+          "registryId": "NCT07000002",
+          "title": "晚期软组织肉瘤免疫联合研究（示例）",
+          "phase": "II 期",
+          "statusText": "招募中",
+          "siteText": "美国",
+          "channel": "clinicaltrials.gov",
+          "fetchedAt": "2026-10-25",
+          "matchNote": "未限定亚型",
+          "country": "美国 / United States",
+          "statusCode": "RECRUITING",
+          "subtype": null,
+          "molecularToken": null,
+          "ihcToken": null,
+          "in_use": 1
+        },
+        {
+          "visibility": "shared",
+          "id": "trp4",
           "registryId": "—",
           "title": "（药物临床试验登记平台）",
           "phase": "—",
-          "statusText": "未查过",
+          "statusText": "未取回",
           "siteText": "—",
           "channel": "chinadrugtrials",
           "fetchedAt": "2026-10-25",
-          "matchNote": "通道未配置，未查过",
+          "matchNote": "通道超时，未取回",
+          "country": null,
+          "statusCode": null,
+          "subtype": null,
+          "molecularToken": null,
+          "ihcToken": null,
+          "notFetched": 1,
           "in_use": 1
         }
       ],

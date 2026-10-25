@@ -20,10 +20,13 @@ SHOTS = [
     ("03-imaging-baseline", "#imaging/0", 1440, None),
     ("04-systemic-foldout-collapsed", "#systemic/0", 1440, None),
     ("05-systemic-foldout-expanded", "#systemic/0", 1440, "open-foldouts"),
-    ("06-metrics-trend", "#metrics/2", 1440, None),
-    ("07-trials", "#trials/0", 1440, None),
-    ("08-mind-private-masked", "#mind/1", 1440, None),
-    ("09-dashboard-860", "#dashboard", 860, None),
+    ("06-metric-cards", "#metrics/0", 1440, None),
+    ("07-metric-card-flipped", "#metrics/0", 1440, "flip-first"),
+    ("08-one-chart", "#metrics/3", 1440, None),
+    ("09-trial-profile", "#trials/0", 1440, None),
+    ("10-trial-match", "#trials/1", 1440, None),
+    ("11-mind-private-masked", "#mind/1", 1440, None),
+    ("12-dashboard-860", "#dashboard", 860, None),
 ]
 
 
@@ -42,6 +45,9 @@ def main():
             if action == "open-foldouts":
                 page.evaluate("() => document.querySelectorAll('.phase-fold').forEach(c => c.open = true)")
                 page.wait_for_timeout(180)
+            if action == "flip-first":
+                page.evaluate("() => document.querySelector('.mcard').click()")
+                page.wait_for_timeout(620)   # 等 480ms 翻转过渡走完再截
             path = OUT / f"{name}.png"
             page.screenshot(path=str(path), full_page=False)
             made.append({"name": name, "path": str(path.relative_to(ROOT)), "bytes": path.stat().st_size})

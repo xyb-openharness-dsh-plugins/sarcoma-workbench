@@ -19,9 +19,9 @@
     ]
   },
   "l2": {
-    "expected": 32,
-    "actual": 32,
-    "visited": 33
+    "expected": 35,
+    "actual": 35,
+    "visited": 36
   },
   "empties": [],
   "foldout": {
@@ -110,6 +110,53 @@
     }
   },
   "hiddenRule": true,
+  "metricCards3d": {
+    "ok": true,
+    "n": 3,
+    "faces": 6,
+    "h": [
+      276,
+      276,
+      276
+    ],
+    "pressed": [
+      "true",
+      "false",
+      "false"
+    ],
+    "hAfter": 276,
+    "transform": "matrix3d(-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1)"
+  },
+  "oneChart": {
+    "ok": true,
+    "lines": 2,
+    "points": 6,
+    "aria": "多指标时间轴，共 2 条线；每条按该指标自身全部记录范围缩放，各指标数值不可比",
+    "heights": [
+      186,
+      186
+    ],
+    "picks": 3,
+    "selLen": 2
+  },
+  "trialMatch": {
+    "ok": true,
+    "bio": {
+      "fields": 6,
+      "unknown": 2,
+      "negSafe": true
+    },
+    "match": {
+      "cards": 3,
+      "indexes": [
+        "100",
+        "87",
+        "50"
+      ],
+      "hasFmt": true,
+      "forbiddenOutsideQuote": []
+    }
+  },
   "consoleErrors": [],
   "pageErrors": [],
   "failedRequests": [],

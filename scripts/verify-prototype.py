@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""原型走查（HVT 的 X1–X4 + 26 号结构断言 + 32 号折叠卡断言 + 禁词）。
+"""原型走查（HVT 的 X1–X4 + 26 号结构断言 + 32 号折叠卡 + 27 号指标卡 3D + 16 号一图秀 + 35 号试验匹配 + 禁词）。
 
 对 prototypes/v0.2/ 本体跑，不用 dev-server：原型是纯静态页，直接 file:// 打开。
 
 判据（缺一条不算通过）：
   1. 0 未捕获异常 / 0 console error / 0 失败请求
-  2. 一级导航 == SPEC 的 11 个；二级页签合计 == 32；每个 (view, sub) 都点开过
+  2. 一级导航 == SPEC 的 11 个；二级页签合计 == 35；每个 (view, sub) 都点开过
   3. 每个页签都渲染出内容（非空、无「尚未实现」）
   4. 无垃圾值（undefined / NaN / [object Object]）出现在正文
   5. 三档宽度（1440 / 1080 / 860）无横向溢出；页脚贴底
   6. 折叠卡：默认展开数 = 0；展开后 5 块且顺序固定；@media print 规则在源码里
   7. 禁词 0 命中（K1–K4）
   8. `[hidden]` 生效、字号在 12.5–15px 区间
+  9. 27 号：指标卡外框 276px、真 3D（matrix3d）、翻一张不影响其他卡
+ 10. 16 号：一图秀 ≥2 条线且各自占满纵向、aria 逐字含"不可比"、选择 ≤4
+ 11. 35 号：建档三态可辨（含"未测"）、匹配页有口径说明且引号外无入组结论词
 
 用法：python3 scripts/verify-prototype.py [--headful]
 """
@@ -28,7 +31,7 @@ PROTO = ROOT / "prototypes" / "v0.2" / "index.html"
 
 EXPECTED_PAGES = ["看板", "我的亚型", "影像与基线", "局部治疗", "全身治疗", "功能与康复",
                   "指标与报告", "复诊与随访", "试验与线索", "心理与家庭", "资料与导出"]
-EXPECTED_SUB_TOTAL = 32
+EXPECTED_SUB_TOTAL = 35
 WIDTHS = [1440, 1080, 860]
 FORBIDDEN = ["建议治疗", "建议手术", "建议放疗", "建议化疗", "建议停药", "可以停药", "无需就医",
              "可能复发", "已经转移", "治愈率", "生存期", "预后良好", "预后差", "进展了",
@@ -149,6 +152,66 @@ def main():
             }""")
             width_reports[w] = {"overflow": overflow, "footer": footer_flush}
 
+        # --- 5b. 27 号：3D 指标卡 ---
+        page.set_viewport_size({"width": 1440, "height": 1000})
+        page.goto(PROTO.as_uri() + "#metrics/0")
+        page.wait_for_timeout(250)
+        cards = page.evaluate("""() => {
+          const cs = [...document.querySelectorAll('.mcard')];
+          const h = cs.map(c => Math.round(c.getBoundingClientRect().height));
+          const faces = document.querySelectorAll('.mface').length;
+          cs[0]?.click();
+          return { n: cs.length, faces, h,
+                   pressed: cs.map(c => c.getAttribute('aria-pressed')),
+                   hAfter: Math.round(cs[0]?.getBoundingClientRect().height || 0) };
+        }""")
+        # 翻转是 480ms 过渡，必须等它走完再读 transform，否则读到的是过渡起点 matrix(...)
+        page.wait_for_timeout(700)
+        cards["transform"] = page.evaluate(
+            "() => getComputedStyle(document.querySelector('.mcard .mcard-inner')).transform")
+        cards_ok = (cards["n"] >= 2 and cards["faces"] == cards["n"] * 2
+                    and all(x == 276 for x in cards["h"])
+                    and cards["pressed"][0] == "true"
+                    and all(p == "false" for p in cards["pressed"][1:])
+                    and "matrix3d" in cards["transform"]
+                    and cards["hAfter"] == 276)
+
+        # --- 5c. 16 号：一图秀（独立归一化 + 指标选择 ≤4） ---
+        page.goto(PROTO.as_uri() + "#metrics/3")
+        page.wait_for_timeout(250)
+        chart = page.evaluate("""() => {
+          const svg = document.querySelector('svg.chart');
+          const paths = [...document.querySelectorAll('svg.chart path.line')];
+          const boxes = paths.map(p => { const b = p.getBBox(); return Math.round(b.height); });
+          return { lines: paths.length, points: document.querySelectorAll('svg.chart circle.pt').length,
+                   aria: svg ? svg.getAttribute('aria-label') : '',
+                   heights: boxes,
+                   picks: document.querySelectorAll('[data-chart-toggle]').length,
+                   selLen: (window.__SARCO_PAL__.state.chartSel || []).length };
+        }""")
+        chart_ok = (chart["lines"] >= 1 and "不可比" in chart["aria"]
+                    and chart["selLen"] <= 4 and chart["picks"] >= 2)
+
+        # --- 5d. 35 号：建档三态 + 匹配无结论词 ---
+        page.goto(PROTO.as_uri() + "#trials/0")
+        page.wait_for_timeout(200)
+        bio = page.evaluate("""() => ({
+          fields: document.querySelectorAll('.bio-field').length,
+          unknown: [...document.querySelectorAll('.bio-field')].filter(f => f.textContent.includes('未测')).length,
+          negSafe: !/未测[^。]{0,6}(阴性|正常)/.test(document.querySelector('.bio-field:last-child')?.textContent || '')
+        })""")
+        page.goto(PROTO.as_uri() + "#trials/1")
+        page.wait_for_timeout(200)
+        match = page.evaluate("""() => {
+          const txt = document.querySelector('#main').innerText;
+          return { cards: document.querySelectorAll('.match-card').length,
+                   indexes: [...document.querySelectorAll('.match-index b')].map(b => b.textContent.trim()),
+                   hasFmt: txt.includes('null') && txt.includes('分母'),
+                   forbiddenOutsideQuote: ['符合入组条件','可以入组','建议报名'].filter(w => txt.includes(w)) };
+        }""")
+        trial_ok = (bio["fields"] >= 4 and match["cards"] >= 1 and match["hasFmt"]
+                    and match["forbiddenOutsideQuote"] == [])
+
         # --- 6. [hidden] 生效 ---
         hidden_ok = page.evaluate("""() => {
           const d = document.createElement('div'); d.hidden = true; d.textContent = 'x';
@@ -168,7 +231,7 @@ def main():
                and not forbidden_hits and not garbage_hits
                and all(not v["overflow"] for v in width_reports.values())
                and all(v["footer"]["ok"] for v in width_reports.values())
-               and hidden_ok),
+               and hidden_ok and cards_ok and chart_ok and trial_ok),
         "l1": {"expected": len(EXPECTED_PAGES), "actual": len(navs), "names_match": navs == EXPECTED_PAGES, "names": navs},
         "l2": {"expected": EXPECTED_SUB_TOTAL, "actual": pages_info["totalSub"], "visited": len(visited)},
         "empties": empties,
@@ -177,6 +240,9 @@ def main():
         "wording": {"forbiddenHits": forbidden_hits, "garbageHits": garbage_hits},
         "widths": width_reports,
         "hiddenRule": hidden_ok,
+        "metricCards3d": {"ok": cards_ok, **cards},
+        "oneChart": {"ok": chart_ok, **chart},
+        "trialMatch": {"ok": trial_ok, "bio": bio, "match": match},
         "consoleErrors": console_errors[:5],
         "pageErrors": page_errors[:5],
         "failedRequests": failed_requests[:5],
