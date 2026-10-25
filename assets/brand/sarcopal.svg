@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="小肉宝 SarcoPal 标识">
+  <title>小肉宝 SarcoPal</title>
+  <rect x="2" y="2" width="92" height="92" rx="22" fill="#e6f1ed"/>
+  <rect x="2" y="2" width="92" height="92" rx="22" fill="none" stroke="#2b6e5f" stroke-width="2" stroke-opacity=".28"/>
+  <!-- 双股螺旋：代表亚型/分子层面；不做人体或器官图示 -->
+  <path d="M36 22c0 18 24 18 24 36s-24 18-24 18" fill="none" stroke="#2b6e5f" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M60 22c0 18-24 18-24 36s24 18 24 18" fill="none" stroke="#1f5a4d" stroke-width="3.4" stroke-linecap="round" stroke-opacity=".55"/>
+  <path d="M40 32h16M38 48h20M40 64h16" fill="none" stroke="#2b6e5f" stroke-width="2.6" stroke-linecap="round" stroke-opacity=".75"/>
+  <!-- 暖砂色小点：指代"患者自己记下的那一条" -->
+  <circle cx="72" cy="70" r="5.4" fill="#b4552b"/>
+</svg>
