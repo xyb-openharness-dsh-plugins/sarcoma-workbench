@@ -573,7 +573,7 @@ window.DEMO = {
       ],
       "fertility": [
         {
-          "visibility": "shared",
+          "visibility": "private",
           "id": "fe1",
           "date": "2025-04-26",
           "item": "医生是否提过生育力保存",
@@ -582,7 +582,7 @@ window.DEMO = {
           "in_use": 1
         },
         {
-          "visibility": "shared",
+          "visibility": "private",
           "id": "fe2",
           "date": "2025-05-20",
           "item": "是否已完成生育力咨询",
@@ -591,7 +591,7 @@ window.DEMO = {
           "in_use": 1
         },
         {
-          "visibility": "shared",
+          "visibility": "private",
           "id": "fe3",
           "date": "2025-08-01",
           "item": "康复评估",
@@ -972,7 +972,7 @@ window.DEMO = {
           "lineNo": 2,
           "regimen": "帕唑帕尼 800 mg qd",
           "dateStart": "2025-11-02",
-          "dateEnd": "",
+          "dateEnd": "2026-07-14",
           "cycleNo": 0,
           "cyclePlan": "连续口服",
           "status": "已换线",
@@ -1038,6 +1038,32 @@ window.DEMO = {
           "unit": "cm",
           "side": "左",
           "text": "左下肢轻度水肿",
+          "recorder": "caregiver",
+          "in_use": 1
+        },
+        {
+          "visibility": "shared",
+          "id": "fp4",
+          "domain": "ae",
+          "date": "2025-12-10",
+          "measure": "",
+          "value": null,
+          "unit": "",
+          "side": "",
+          "text": "手脚发红脱皮，走路有点疼（自述）。",
+          "recorder": "caregiver",
+          "in_use": 1
+        },
+        {
+          "visibility": "shared",
+          "id": "fp5",
+          "domain": "ae",
+          "date": "2026-02-20",
+          "measure": "",
+          "value": null,
+          "unit": "",
+          "side": "",
+          "text": "家里量的血压 145/92，平时不高。",
           "recorder": "caregiver",
           "in_use": 1
         },
@@ -1222,7 +1248,7 @@ window.DEMO = {
       ],
       "fertility": [
         {
-          "visibility": "shared",
+          "visibility": "private",
           "id": "fep1",
           "date": "2026-09-25",
           "item": "康复评估",

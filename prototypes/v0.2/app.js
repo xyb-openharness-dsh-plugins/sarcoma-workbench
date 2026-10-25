@@ -85,76 +85,33 @@ const state = {
   candidateOpen: false,
   // demoOff 默认 false：本原型里每条记录都 in_use=1，勾上会导出 0 条——
   // 那正好证明开关生效，但不能当默认值，否则演示看起来像坏了。
-  exportOpts: { privateOn: false, demoOff: false, from: '2025-01-01', to: TODAY },
-  trialsQuery: '滑膜肉瘤',
+  // 纪律优先于演示观感：演示数据默认排除（SPEC §4.2 / K5）。
+  // 默认导出为空不是 bug，是开关在工作；页面必须把这个"空"解释清楚，而不是把默认值改反。
+  exportOpts: { privateOn: false, demoOff: true, from: '2025-01-01', to: TODAY },
+  moodDraft: '',
+  lastExport: null,
+  trialsQuery: '',
   trialFilter: 'all',
   visited: new Set(['dashboard']),
 };
 const P = () => D.profiles[state.profile];
 
 /* ---------------- 三出口过滤（K5 / DEV-REQ R7） ----------------
-   私密与演示数据的排除**只有一个实现**。三个出口（导出快照 / AI 上下文 / 摘要·一页纸）
-   都必须经过 buildExportSnapshot / buildAgentContext / buildVisitPrepSheet，
-   不允许任何地方自己 filter（否则就是第四个实现，迟早漏一个）。
-   字段名是 visibility='private' 与 in_use=1 —— 属性在数据里，不在模板里。 */
-const isPrivate = (x) => x && x.visibility === 'private';
-function visible(list, { includePrivate = false } = {}) {
-  return (list || []).filter((x) => includePrivate || !isPrivate(x));
-}
-function privateCount(list) {
-  return (list || []).filter(isPrivate).length;
-}
-/** 导出/AI/摘要共用的"这条能不能出去"。私密与演示数据都在这里判定。 */
-function canLeave(x, opts = {}) {
-  if (!x) return false;
-  if (isPrivate(x) && !opts.privateOn) return false;
-  if (x.in_use && !opts.demoOn) return false;
-  return true;
-}
-function exportable(list, opts = {}) {
-  return (list || []).filter((x) => canLeave(x, opts));
-}
-
-/** 出口一：导出快照。 */
-function buildExportSnapshot(p, opts = {}) {
-  const pick = (list) => exportable(list, opts);
-  return {
-    kind: 'snapshot',
-    generatedAt: TODAY,
-    profile: { name: p.name, site: p.site, recorderLabel: p.recorderLabel },
-    subtype: p.subtype,
-    pathologies: pick(p.pathologies), imaging: pick(p.imaging),
-    local: pick(p.local), systemic: pick(p.systemic),
-    metrics: pick(p.metrics), functionLog: pick(p.functionLog),
-    visits: pick(p.visits), trials: pick(p.trials),
-    // 私密区：默认一条都不进；显式勾选才带，且带计数说明
-    viewpoint: opts.privateOn ? p.viewpoint : [],
-    viewpointFiltered: opts.privateOn ? 0 : privateCount(p.viewpoint),
-  };
-}
-/** 出口二：AI 上下文。私密永远不进（AI 出口不提供"勾选放开"，避免一次误点永久外泄）。 */
-function buildAgentContext(p) {
-  return {
-    kind: 'agent-context',
-    site: p.site, subtype: { name: p.subtype.name, grade: p.subtype.grade },
-    pathologies: visible(p.pathologies), imaging: visible(p.imaging),
-    systemic: visible(p.systemic), local: visible(p.local),
-    metrics: visible(p.metrics),
-    viewpoint: [], viewpointFiltered: privateCount(p.viewpoint),
-  };
-}
-/** 出口三：就诊一页纸（摘要）。私密永远不进。 */
-function buildVisitPrepSheet(p) {
-  const base = p.imaging.find((i) => i.baseline && i.site === p.site);
-  const v = visible(p.visits).find((x) => x.planned) || visible(p.visits)[0];
-  return {
-    kind: 'prep-sheet',
-    name: p.name, site: p.site, subtype: p.subtype.name, grade: p.subtype.grade,
-    stageText: p.subtype.stageText, baseline: base || null,
-    lines: visible(p.systemic), questions: v ? v.questions : [],
-    viewpoint: [], viewpointFiltered: privateCount(p.viewpoint),
-  };
-}
+   **实现不在这里**：见 ./exits.js。这里只做解构 + 绑定 TODAY。
+   理由：同一段口径必须被产品与测试同时加载。写在 app.js 里时，
+   测试只能在测试文件里重写一遍同名函数，于是"全绿"与产品行为无关（P1-18）。 */
+const EXITS = globalThis.SARCO_EXITS;
+if (!EXITS) throw new Error('exits.js 未加载：三出口过滤缺失，导出/AI/一页纸会失去私密与演示数据过滤');
+const {
+  visible, privateCount, canLeave, exportable, optsFromUI, inRange, allPrivate,
+  buildExportSnapshot: _buildExportSnapshot,
+  buildAgentContext: _buildAgentContext,
+  buildVisitPrepSheet: _buildVisitPrepSheet,
+} = EXITS;
+// 生成时间由 app 注入（exits.js 不依赖 TODAY 常量）
+const buildExportSnapshot = (p, opts = {}) => _buildExportSnapshot(p, { today: TODAY, ...opts });
+const buildAgentContext = (p) => _buildAgentContext(p);
+const buildVisitPrepSheet = (p) => _buildVisitPrepSheet(p);
 
 /* ---------------- shell ---------------- */
 function nav() {
@@ -247,7 +204,7 @@ function smoothPath(pts) {
   return d;
 }
 /** 单指标趋势图：SVG 根 class="chart"，单点不连线（doc 16）。 */
-function lineChart(series, { w = 640, h = 200, ref = null, unit = '' } = {}) {
+function lineChart(series, { w = 640, h = 200, ref = null, unit = '', label = '' } = {}) {
   const pad = { l: 46, r: 16, t: 16, b: 30 };
   const xs = series.map((s) => s.x), ys = series.map((s) => s.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
@@ -262,7 +219,26 @@ function lineChart(series, { w = 640, h = 200, ref = null, unit = '' } = {}) {
   const refLine = ref === null ? '' : `<line class="ref" x1="${pad.l}" x2="${w - pad.r}" y1="${sy(ref)}" y2="${sy(ref)}"/><text class="ax" x="${pad.l - 6}" y="${sy(ref) + 3}" text-anchor="end">${esc(String(ref))}</text>`;
   const yTicks = [minY, (minY + maxY) / 2, maxY].map((v) => `<text class="ax" x="${pad.l - 6}" y="${sy(v) + 3}" text-anchor="end">${num(v, 1)}</text>`).join('');
   const xTicks = series.filter((_, i) => i === 0 || i === series.length - 1).map((s) => `<text class="ax" x="${sx(s.x)}" y="${h - 8}" text-anchor="middle">${esc(s.label)}</text>`).join('');
-  return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(state.metricPick)} 趋势">${refLine}${path ? `<path class="line" d="${path}"/>` : ''}${dots}${yTicks}${xTicks}</svg>`;
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(label || '指标')} 趋势（${series.length} 个点，单位 ${esc(unit || '未标注')}）">${refLine}${path ? `<path class="line" d="${path}"/>` : ''}${dots}${yTicks}${xTicks}</svg>`;
+}
+
+/* ---------------- AI 候选（演示态） ----------------
+   候选必须由**本档案的真实记录**推导，否则代记档案会拿到另一位患者的提问（P1-14）。
+   这里不调用模型：只把"档案里有哪些值得问医生的事实"映射成问句骨架，且仍然要人核对。 */
+function draftQuestions(p) {
+  const out = [];
+  const sys = visible(p.systemic).filter((x) => !x.in_use);
+  const last = sys[sys.length - 1];
+  if (last) out.push(`第 ${last.lineNo} 线（${last.regimen}）现在到第几周期了，后面的计划是什么？`);
+  const lowWbc = visible(p.metrics).filter((m) => /WBC|白细胞/i.test(m.name) && Number(m.value) < 3.0);
+  if (lowWbc.length) out.push(`白细胞降到 ${lowWbc[lowWbc.length - 1].value} 那一次（${lowWbc[lowWbc.length - 1].date}），下一次还能按原计划打吗？`);
+  const alt = visible(p.metrics).filter((m) => /ALT/i.test(m.name));
+  if (alt.length > 1 && Number(alt[alt.length - 1].value) > Number(alt[0].value) * 1.5) out.push(`ALT 从 ${alt[0].value} 升到 ${alt[alt.length - 1].value}，需要调整方案吗？`);
+  const lumps = visible(p.metrics).filter((m) => /cm|周径/.test(m.unit || ''));
+  if (lumps.length > 1) out.push(`${lumps[0].measure || '这个部位'}从 ${lumps[0].value}${lumps[0].unit} 变到 ${lumps[lumps.length - 1].value}${lumps[lumps.length - 1].unit}，这算变化吗？`);
+  const priv = allPrivate(p);
+  out.push(`（本档案有 ${priv} 条私密记录，未进入这次上下文）我想问的还有：`);
+  return out.length ? out : ['还没有足够记录来生成候选——先记一条，再让我整理。'];
 }
 
 /* ---------------- dashboard ---------------- */
@@ -273,7 +249,7 @@ function viewDashboard() {
   const activeSys = p.systemic.find((s) => s.status === '进行中');
   const baseline = p.imaging.find((i) => i.baseline && i.site === p.site);
   const pending = p.candidates.filter((c) => c.status === 'pending').length;
-  const priv = privateCount(p.viewpoint) + p.viewpoint.filter((v) => v.visibility === 'private' && v.domain === 'fertility').length;
+  const priv = allPrivate(p);   // viewpoint + fertility，各算一次（原来 fertility 被算了两次，看板显示 3 实际 2）
   return `${pageHead(`${p.name}的看板`, `${esc(p.site)} · ${esc(p.subtype.name)} · ${esc(p.subtype.grade)} · ${esc(p.recorderLabel)}`,
     `<button class="soft" data-action="open-candidates">待核对 ${pending} 条</button>${agentButton('我想整理一下最近一次的复查资料', 'AI 协助整理')}`)}
   <div class="hero">
@@ -566,7 +542,15 @@ function foldCard(line) {
   const p = P();
   const metrics = p.metrics.filter((m) => m.date >= line.dateStart && (!line.dateEnd || m.date <= line.dateEnd));
   const imaging = p.imaging.filter((i) => i.date >= line.dateStart && (!line.dateEnd || i.date <= line.dateEnd));
-  const aelist = (p.local.find((l) => l.complications)?.complications || []).slice(0, 2);
+  // 副作用必须落在本线时段内。第一版取的是"第一条带并发症的局部记录"，未过滤，
+  // 导致三条治疗线的副作用逐字相同（术后并发症被挂在靶向/试验名下）——患者会读成因果关系。
+  const inWin = (d) => d >= line.dateStart && (!line.dateEnd || d <= line.dateEnd);
+  const aelist = [
+    // 局部治疗并发症（术后/放疗后）
+    ...p.local.filter((l) => inWin(l.dateStart || l.date)).flatMap((l) => l.complications || []),
+    // 自述不适（functionLog 里 domain='ae' 的条目）：靶向/化疗期间最常见
+    ...(p.functionLog || []).filter((f) => f.domain === 'ae' && f.text),
+  ].filter((a) => inWin(a.date)).slice(0, 3);
   const support = p.viewpoint.filter((v) => v.date >= line.dateStart && (!line.dateEnd || v.date <= line.dateEnd));
   const visSupport = visible(support, { includePrivate: false });
   const hiddenCount = support.length - visSupport.length;
@@ -593,7 +577,11 @@ function viewSystemicOverview() {
   <div class="card">
     <div class="card-head"><h2>${p.systemic.length} 条治疗线</h2><span class="muted">默认全部收起（0 个展开）</span></div>
     ${p.systemic.map(foldCard).join('')}
-    <p class="small-note print-note">打印时全部展开（@media print），一页拿到完整病程。</p>
+    <div class="fold-actions">
+      <button class="soft" data-action="expand-all">全部展开</button>
+      <button class="soft" data-action="collapse-all">全部收起</button>
+    </div>
+    <p class="small-note print-note">浏览器打印<b>不会</b>自动展开收起的折叠卡（CSS 无法改变 &lt;details&gt; 的开合状态）。要看完整病程请先点「全部展开」，再打印/导出 PDF。</p>
   </div>`;
 }
 function viewSystemicCycles() {
@@ -645,13 +633,28 @@ function viewFuncList(domain) {
     wound: { title: '伤口与皮肤', desc: '自述描述 + 处理。不做感染判断、不做皮炎分级。', ph: '皮肤有点红、有点疼', kind: 'AI 记一句' },
   }[domain];
   const nums = list.filter((f) => f.value !== null && f.value !== undefined);
-  const picked = domain === 'lymphedema' ? nums : [];
+  // 只画"同一测量位置 + 同一单位"的那一组。换位置或换单位不合并（页头写的就是这句，
+  // 第一版代码直接画了 nums 全部，等于自己把口径否了 —— P1-9）。
+  const groups = {};
+  if (domain === 'lymphedema') {
+    for (const f of nums) {
+      const key = `${f.measure || '未注明位置'}|${f.unit || '未注明单位'}`;
+      (groups[key] = groups[key] || []).push(f);
+    }
+  }
+  const groupKeys = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+  const picked = groupKeys.length ? groups[groupKeys[0]] : [];
+  const otherGroups = groupKeys.slice(1).map((k) => ({ key: k, n: groups[k].length }));
   return `${pageHead(cfg.title, cfg.desc,
     `${agentButton(cfg.ph, cfg.kind)}${moreMenu([{ label: '手工补一条' }, { label: '看历史' }])}`)}
   ${domain === 'wound' ? notice('plain', '工作台<b>不判断伤口是否感染、不做放射性皮炎分级</b>；出现破溃、渗液时，记录内容照抄自述，是否就诊由你和医生决定。') : ''}
-  ${picked.length > 1 ? `<div class="card"><div class="card-head"><h2>${esc(picked[0].measure)}</h2><span class="muted">单位 ${esc(picked[0].unit)}</span></div>
-    ${lineChart(picked.map((f) => ({ x: new Date(f.date).getTime(), y: f.value, label: f.date.slice(5) })), { w: 620, h: 190, unit: picked[0].unit })}
-    <p class="small-note">只画同一测量位置、同一单位的数值。换位置或换单位不合并成一条线（分类不进趋势）。</p></div>` : ''}
+  ${picked.length > 1 ? `<div class="card"><div class="card-head"><h2>${esc(picked[0].measure)}</h2><span class="muted">单位 ${esc(picked[0].unit)} · ${picked.length} 个点</span></div>
+    ${lineChart(picked.map((f) => ({ x: new Date(f.date).getTime(), y: f.value, label: f.date.slice(5) })), { w: 620, h: 190, unit: picked[0].unit, label: `${picked[0].measure}（${picked[0].unit}）` })}
+    <p class="small-note">只画同一测量位置、同一单位的数值。换位置或换单位<b>不合并</b>成一条线（分类不进趋势）。</p>
+    ${otherGroups.length ? `<p class="small-note warn">另外还有 ${otherGroups.length} 组不同位置/单位的记录（${otherGroups.map((g) => esc(g.key.replace('|', ' / ')) + ' × ' + g.n).join('、')}），<b>没有画进这张图</b>——混在一起会看起来像数值突变。</p>` : ''}</div>`
+    : `<div class="card"><div class="card-head"><h2>趋势</h2></div>${empty(
+      nums.length === 0 ? '还没有测量记录' : '暂时连不成线',
+      nums.length === 0 ? '记录要带数值 + 测量位置 + 单位，才会出现在这里。' : '同一位置、同一单位的数值至少两条才画线；现在只有一组里的一个点，或每组都只有一个点。')}</div>`}
   <div class="card" style="margin-top:14px">
     <div class="card-head"><h2>记录</h2><span class="muted">${list.length} 条</span></div>
     <div class="stack">
@@ -700,8 +703,13 @@ function viewMetricsTrend() {
   const names = [...new Set(p.metrics.map((m) => m.name))];
   const pick = state.metricPick && names.includes(state.metricPick) ? state.metricPick : names[0];
   state.metricPick = pick;
-  const rows = p.metrics.filter((m) => m.name === pick).sort((a, b) => a.date.localeCompare(b.date));
-  const unit = rows[0]?.unit || '';
+  // 同一指标可能有多个单位（g/L vs g/dL）。单位不同的数值画进一条线＝制造假趋势（P1-8）。
+  // 口径：默认只画"出现次数最多的那个单位"，其余单位在下方显式列出，不合并。
+  const all = p.metrics.filter((m) => m.name === pick);
+  const unitCount = all.reduce((acc, m) => { acc[m.unit] = (acc[m.unit] || 0) + 1; return acc; }, {});
+  const unit = Object.keys(unitCount).sort((a, b) => unitCount[b] - unitCount[a])[0] || '';
+  const otherUnits = Object.keys(unitCount).filter((u) => u !== unit);
+  const rows = all.filter((m) => m.unit === unit).sort((a, b) => a.date.localeCompare(b.date));
   const ref = rows[0]?.ref?.match(/(\d+\.?\d*)\s*[–-]\s*(\d+\.?\d*)/);
   const refMid = ref ? (+ref[1] + +ref[2]) / 2 : null;
   return `${pageHead('趋势对照', '一次只看一个指标。单点不连线；跨单位不合并。', moreMenu([{ label: '这张图的画法' }]))}
@@ -714,9 +722,11 @@ function viewMetricsTrend() {
     <div class="stack">
       <div class="card">
         <div class="card-head"><h2>${esc(pick)}</h2><span class="muted">${rows.length} 个点 · ${esc(unit)}</span></div>
-        ${rows.length > 1 ? lineChart(rows.map((m) => ({ x: new Date(m.date).getTime(), y: m.value, label: m.date.slice(5) })), { ref: refMid, unit })
-          : empty('只有一个点', '单点不连线（doc 16）。再记一次就能看到走向。')}
+        ${rows.length === 0 ? empty('还没有这个指标的记录', '这一页只画已确认的数值。拍照或手工补一条之后，这里才会出现点。')
+          : rows.length === 1 ? empty('只有一个点', '单点不连线（一个点画不出走向）。再记一次就能看到变化。')
+          : lineChart(rows.map((m) => ({ x: new Date(m.date).getTime(), y: m.value, label: m.date.slice(5) })), { ref: refMid, unit, label: pick })}
         <p class="small-note">参考区间：${esc(rows[0]?.ref || '这张单没印')}。图上的虚线只是参考区间的中点，不是判定线。</p>
+        ${otherUnits.length ? `<p class="small-note warn">这个指标还出现过别的单位（${otherUnits.map((u) => `${esc(u)} × ${unitCount[u]}`).join('、')}），<b>没有画进这条线</b>——不同单位连成一条线会看起来像数值突变。</p>` : ''}
       </div>
       <div class="card">
         <div class="card-head"><h2>原始数值</h2></div>
@@ -801,7 +811,8 @@ function viewVisitPrep() {
   const base = p.imaging.find((i) => i.baseline && i.site === p.site);
   return `${pageHead('就诊准备', '一页纸：亚型、最近治疗、基线影像、想问的问题。', `<button class="primary" data-action="export-prep">生成一页纸</button>`)}
   <div class="card print-page">
-    <div class="print-head"><h2>${esc(p.name)} · ${esc(p.site)} · ${esc(p.subtype.name)}</h2><p class="muted small">生成于 ${TODAY} · 资料截至 ${TODAY} · 仅供就诊沟通，不是病历</p></div>
+    <div class="print-head"><h2>${esc(p.name)} · ${esc(p.site)} · ${esc(p.subtype.name)}</h2>
+      <p class="muted small"><b>记录人：${esc(p.recorderLabel)}</b>（${p.recorder === 'patient' ? '本人记录' : '家属代记，本人可能未逐条核对'}） · 生成于 ${TODAY} · 资料截至 ${TODAY} · 仅供就诊沟通，不是病历</p></div>
     <div class="kv-grid">
       ${kv('亚型（报告原文）', p.subtype.name)}
       ${kv('分级', p.subtype.grade)}
@@ -822,6 +833,11 @@ function viewVisitPrep() {
 function viewTrials() {
   const p = P();
   const list = p.trials;
+  // seen = 真的从某通道取回过条目；failed = 有通道本次没取回（未配置/未查过/超时）。
+  // 这两个必须分开：0 条 + 通道失败 ≠ 没有试验（K6）。
+  const real = list.filter((t) => !/未查过|未取回|未配置/.test(t.statusText || ''));
+  const fetchedAt = real.map((t) => t.fetchedAt).filter(Boolean).sort().slice(-1)[0] || null;
+  const channelFailed = list.length > 0 && real.length < list.length;
   const filtered = state.trialFilter === 'all' ? list : list.filter((t) => /招募/.test(t.statusText));
   if (state.sub === 1) {
     return `${pageHead('关注与入组', '关注的试验与入组步骤。工作台不判断你是否符合条件。', moreMenu([{ label: '加一条关注' }]))}
@@ -841,8 +857,13 @@ function viewTrials() {
     <p class="small-note">通道：clinicaltrials.gov · ChiCTR · 药物临床试验登记平台 · ICTRP。任一通道失败会显示"未取回"，<b>不会显示空列表冒充"没有试验"</b>。</p>
   </div>
   <div class="card" style="margin-top:14px">
-    <div class="card-head"><h2>结果</h2><span class="muted">${filtered.length} 条 · 采集于 2026-10-25</span></div>
+    <div class="card-head"><h2>结果</h2><span class="muted">${filtered.length
+      ? `${filtered.length} 条 · 采集于 ${esc(fetchedAt || '未记录')}`
+      : (channelFailed ? '本次没能取回 · 不是"没有试验"' : `0 条 · 采集于 ${esc(fetchedAt || '未记录')}`)}</span></div>
     <div class="stack">
+    ${filtered.length === 0 ? `<div class="empty-state"><b>${channelFailed ? '有通道没取回，不是"没有试验"' : '按当前条件没有匹配到'}</b>
+      <p>${channelFailed ? '下面列出的通道里有本次没取回的。空白不代表这个亚型没有在研研究，只代表<b>这次没查到</b>。' : '可以放宽亚型关键词或把状态改成"全部"再查一次。'}</p>
+      <p class="small-note">${list.map((t) => `${esc(t.channel)}：${esc(t.statusText)}`).join(' · ') || '还没有任何通道的采集记录'}</p></div>` : ''}
     ${filtered.map((t) => `<div class="trial-row">
       <div><b>${esc(t.title)}</b><p class="muted small">${esc(t.registryId)} · ${esc(t.phase)} · ${esc(t.siteText)}</p>
       <p class="small">${esc(t.matchNote)}</p>
@@ -871,7 +892,8 @@ function viewMood() {
   <div class="card">
     <div class="card-head"><h2>记一条</h2><span class="muted">私密 · 默认不导出</span></div>
     <div class="mood-row">${['很怕', '累', '平稳', '有点盼头'].map((m) => `<button class="chip" data-action="mood" data-mood="${esc(m)}" aria-pressed="${p.viewpoint.slice(-1)[0]?.mood === m}">${esc(m)}</button>`).join('')}</div>
-    <label class="field" style="margin-top:12px"><span>一句话（≤140 字）</span><textarea id="mood-text" rows="3" placeholder="想写什么就写什么，不用组织语言">${esc(p.viewpoint.filter((v) => v.visibility === 'private').slice(-1)[0]?.text || '')}</textarea></label>
+    <label class="field" style="margin-top:12px"><span>一句话（≤140 字）</span><textarea id="mood-text" rows="3" maxlength="140" placeholder="想写什么就写什么，不用组织语言">${esc(state.moodDraft)}</textarea></label>
+    <p class="small-note">输入框只放<b>你这次新写的</b>内容；已保存的记录不会回填到框里——遮住状态下截图、投屏都不会露出旧内容。</p>
     <div class="actions"><button class="primary" data-action="save-mood">存为私密记录</button><span class="muted small">存进去后可在「私密记录」看到</span></div>
   </div>
   <div class="card" style="margin-top:14px">
@@ -902,7 +924,7 @@ function viewSupport() {
 function viewFertility() {
   const p = P();
   return `${pageHead('生育与亲密', '治疗前是否被提过生育力保存、康复评估。只记录议题是否存在。', moreMenu([{ label: '补一条' }]))}
-  ${notice('violet', '这一页<b>不输出"你应当去保存生育力/做康复"</b>这类句子。只记录"医生有没有提过"，出处附在下面。')}
+  ${notice('violet', '这一页<b>只记录"医生有没有提过"</b>，不把记录写成对你的要求；出处附在下面。')}
   <div class="card">
     <div class="card-head"><h2>记录项</h2>${pill('私密', 'violet')}</div>
     <div class="stack">${p.fertility.map((f) => `<div class="row static"><div class="row-main"><div><b>${esc(f.item)}</b><p>${esc(f.value)}${f.note ? ' · ' + esc(f.note) : ''}</p><small class="src">${esc(f.date)}</small></div></div>${moreMenu([{ label: '改这一条' }])}</div>`).join('')}</div>
@@ -910,7 +932,7 @@ function viewFertility() {
   <div class="card" style="margin-top:14px"><div class="card-head"><h2>出处（只列文件，不给建议）</h2></div>
   <div class="rows">
     ${row('ASCO 2025 生育力保存指南', '要求在开始抗肿瘤治疗前讨论并记录（J Clin Oncol 2025;43(12):1488–1515）', 'data-action="noop"')}
-    ${row('NCCN 患者版 2025 p.27', '写明手术存在肢体/身体功能障碍风险，应接受康复评估', 'data-action="noop"')}
+    ${row('NCCN 患者版 2025 p.27', '提到手术存在肢体/身体功能障碍风险，并讨论了康复评估（该指南原文为建议性表述；此处只记录这个议题存在，不转成对你的要求）', 'data-action="noop"')}
   </div></div>`;
 }
 
@@ -956,11 +978,12 @@ function viewCandidates() {
 function viewExport() {
   const p = P();
   const o = state.exportOpts;
-  const privCount = privateCount(p.viewpoint);
-  const outCount = exportable([...p.pathologies, ...p.imaging, ...p.local, ...p.systemic,
-    ...p.metrics, ...p.functionLog, ...p.visits, ...p.trials, ...p.viewpoint], o).length;
-  const allCount = [p.pathologies, p.imaging, p.local, p.systemic, p.metrics, p.functionLog,
-    p.visits, p.trials, p.viewpoint].reduce((n, a) => n + a.length, 0);
+  const canon = optsFromUI(o);           // demoOff → demoOn，不归一就会恒排除（P1-4）
+  const privCount = allPrivate(p);
+  const pool = [p.pathologies, p.imaging, p.local, p.systemic, p.metrics, p.functionLog,
+    p.visits, p.trials, p.viewpoint, p.fertility];
+  const allCount = pool.reduce((n, a) => n + a.length, 0);
+  const outCount = pool.reduce((n, a) => n + exportable(a, canon).filter((x) => inRange(x, canon.from, canon.to)).length, 0);
   return `${pageHead('导出快照', '导出的是"资料快照"，不是病历。私密与演示数据默认排除。', `<button class="primary" data-action="do-export">生成</button>`)}
   ${notice('warn', '导出物固定带一句"生成于 X，资料截至 Y，仅供沟通，不是病历"。<b>私密记录默认不导出</b>——要导出需在这里显式勾选。')}
   <div class="grid two">
@@ -973,12 +996,17 @@ function viewExport() {
     <div class="card"><div class="card-head"><h2>会包含什么</h2><span class="pill green">约 ${outCount} / ${allCount} 条</span></div>
       <div class="rows">
         ${row('我的亚型', '亚型 / 分级 / 分期（报告原文）', 'data-action="noop"')}
-        ${row('局部治疗与全身治疗', `${p.local.length} 条局部 · ${p.systemic.length} 条全身`, 'data-action="noop"')}
-        ${row('基线影像与复查', `${p.imaging.length} 次影像（含原文）`, 'data-action="noop"')}
-        ${row('指标表', `${p.metrics.length} 条数值`, 'data-action="noop"')}
+        ${row('局部治疗与全身治疗', `${exportable(p.local, canon).length} 条局部 · ${exportable(p.systemic, canon).length} 条全身`, 'data-action="noop"')}
+        ${row('基线影像与复查', `${exportable(p.imaging, canon).length} 次影像（含原文）`, 'data-action="noop"')}
+        ${row('指标表', `${exportable(p.metrics, canon).length} 条数值`, 'data-action="noop"')}
         ${row('想问的问题', `${p.visits[0]?.questions.length || 0} 条`, 'data-action="noop"')}
       </div>
       <p class="small-note">不含：私密记录（除勾选）、演示数据（除取消勾选）、任何"诊断结论/治疗建议/预后"。</p>
+      ${outCount === 0 ? `<div class="empty-state"><b>当前范围会导出 0 条</b>
+        <p>${canon.demoOn ? '这份档案在所选日期范围内没有记录。' : '本原型<b>全部记录都标了 in_use=1（演示数据）</b>，而导出默认排除演示数据——所以默认是 0 条。<b>这不是坏了，是纪律在起作用。</b>想看导出长什么样，取消勾选"排除演示数据"。'}</p></div>` : ''}
+      ${state.lastExport ? `<div class="card" style="margin-top:12px;box-shadow:none;border-color:var(--violet)"><div class="card-head"><h2>上次生成的结果</h2>${pill('已生成', 'green')}</div>
+        <p class="small">${state.lastExport.kind === 'snapshot' ? '资料快照' : '就诊一页纸'} · 共 <b>${state.lastExport.items}</b> 项 · 已排除私密 <b>${state.lastExport.filtered}</b> 条 · 生成于 ${TODAY}</p>
+        <p class="small-note">演示态不真正落盘。真实版本会写到 output/YYYY/MM/ 下并登记来源。</p></div>` : ''}
     </div>
   </div>`;
 }
@@ -994,7 +1022,7 @@ function viewPrivacy() {
       <tr><td><b>摘要 / 一页纸</b></td><td>默认排除</td><td>默认排除</td><td class="muted small">同一函数，三处调用</td></tr>
     </tbody></table>
   </div>
-  <div class="card" style="margin-top:14px"><div class="card-head"><h2>本档案的私密条目</h2><span class="muted">${privateCount(p.viewpoint)} 条</span></div>
+  <div class="card" style="margin-top:14px"><div class="card-head"><h2>本档案的私密条目</h2><span class="muted">${allPrivate(p)} 条</span></div>
   <p class="small-note">已从导出、AI 上下文与就诊一页纸中排除。可在「心理与家庭 · 私密记录」查看。</p>
   <div class="actions"><button class="soft" data-nav="mind" data-sub="1">去看私密记录</button></div></div>`;
 }
@@ -1024,7 +1052,6 @@ function render() {
     </div>
   </div>`;
   if (state.dialog === 'glossary') $('#app').insertAdjacentHTML('beforeend', glossaryDialog());
-  if (state.toast) showToast(state.toast);
   bind();
 }
 function glossaryDialog() {
@@ -1034,7 +1061,18 @@ function glossaryDialog() {
     <p class="small-note">以上为工作台编辑归纳，不是指南原文；具体以医生解释为准。</p>
   </div></div>`;
 }
-function showToast(msg) { $('#app').insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(msg)}</div>`); setTimeout(() => { $('.toast')?.remove(); }, 2600); }
+/* toast 必须挂在 #app 之外：render() 会整体重写 #app.innerHTML，
+   任何插在里面的节点都会在同一个 tick 被销毁（第一版就栽在这，所有动作零反馈）。 */
+function showToast(msg) {
+  state.toast = msg;
+  document.querySelectorAll('.toast').forEach((n) => n.remove());
+  document.body.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(msg)}</div>`);
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => {
+    document.querySelectorAll('.toast').forEach((n) => n.remove());
+    state.toast = null;
+  }, 3200);
+}
 
 /* ---------------- events ---------------- */
 function bind() {
@@ -1044,10 +1082,30 @@ function bind() {
     if (b.dataset.nav) return go(b.dataset.nav, b.dataset.sub);
     state.sub = Number(b.dataset.sub); render();
   });
-  $$('[data-profile]').forEach((b) => b.onclick = () => { state.profile = Number(b.dataset.profile); state.sub = 0; render(); });
+  // 切档案 = 换主体。凡与主体绑定的 UI 状态必须一起清，
+  // 否则"在 A 档案解锁私密 → 切到 B 档案"就把 B 的私密直接摊开了（P0-2 实测路径）。
+  $$('[data-profile]').forEach((b) => b.onclick = () => {
+    const next = Number(b.dataset.profile);
+    if (next === state.profile) return;
+    state.profile = next;
+    state.sub = 0;
+    state.showPrivate = false;
+    state.metricPick = null;
+    state.agentDraft = null;
+    state.candidateOpen = false;
+    state.moodDraft = '';
+    state.trialsQuery = '';
+    state.exportOpts = { ...state.exportOpts, privateOn: false };
+    state.lastExport = null;
+    render();
+  });
   $$('[data-metric]').forEach((b) => b.onclick = () => { state.metricPick = b.dataset.metric; render(); });
   $$('[data-action]').forEach((b) => b.onclick = () => act(b.dataset.action, b));
   $$('#trial-status').forEach((s) => s.onchange = () => { state.trialFilter = s.value; render(); });
+  const tq = $('#trial-q'); if (tq) tq.onchange = () => { state.trialsQuery = tq.value; render(); };
+  const expFrom = $('#exp-from'); if (expFrom) expFrom.onchange = () => { state.exportOpts.from = expFrom.value; render(); };
+  const expTo = $('#exp-to'); if (expTo) expTo.onchange = () => { state.exportOpts.to = expTo.value; render(); };
+  const mood = $('#mood-text'); if (mood) mood.oninput = () => { state.moodDraft = mood.value; };
   const expPriv = $('#exp-private'); if (expPriv) expPriv.onchange = () => { state.exportOpts.privateOn = expPriv.checked; render(); };
   const expDemo = $('#exp-demo'); if (expDemo) expDemo.onchange = () => { state.exportOpts.demoOff = expDemo.checked; render(); };
 }
@@ -1062,12 +1120,9 @@ function act(action, el) {
     case 'open-glossary': state.dialog = 'glossary'; return render();
     case 'close-dialog': state.dialog = null; return render();
     case 'agent-draft': {
-      const ctx = buildAgentContext(P());
-      state.agentDraft = { source: 'AI 协助（演示）· 未发送', filtered: ctx.viewpointFiltered, items: [
-        '白细胞降到 2.8 那一次，下一次化疗还能按原计划打吗？',
-        'ALT 从 32 升到 78，需要调整方案吗？',
-        '右腿肿胀和放疗有关系吗？要不要做康复评估？',
-      ] };
+      const p = P();
+      const ctx = buildAgentContext(p);
+      state.agentDraft = { source: 'AI 协助（演示）· 未发送', filtered: ctx.viewpointFiltered, items: draftQuestions(p) };
       document.activeElement?.blur?.();
       showToast('已把提示词放进输入框，未自动发送（IP10）');
       return render();
@@ -1076,11 +1131,43 @@ function act(action, el) {
     case 'reject-cand': showToast('已拒收，零副作用（演示）'); state.agentDraft = null; return render();
     case 'close-draft': state.agentDraft = null; return render();
     case 'open-candidates': state.candidateOpen = true; return go('records', 1);
-    case 'set-baseline': showToast('基线已切换，旧基线自动失活（演示）'); return render();
+    case 'set-baseline': {
+      // 基线按"部位"唯一：同一部位只能有一条激活基线（H6 / SPEC ADR-3）。
+      // 换位置/换检查不是换基线，所以只关同部位的旧基线。
+      const p = P();
+      const target = p.imaging.find((i) => i.id === el?.dataset.id);
+      if (!target) return;
+      p.imaging.forEach((i) => { if (i.site === target.site) i.baseline = 0; });
+      target.baseline = 1;
+      showToast(`基线已改为 ${target.date} ${target.modality}；该部位旧基线已自动失活`);
+      return render();
+    }
     case 'toggle-private': state.showPrivate = !state.showPrivate; return render();
-    case 'save-mood': showToast('已存为私密记录（演示）'); return render();
-    case 'add-question': showToast('已加一条问题（演示）'); return render();
-    case 'add-visit': showToast('已加一次复诊（演示）'); return render();
+    case 'save-mood': {
+      const p = P();
+      const txt = (state.moodDraft || '').trim();
+      if (!txt) return showToast('还没写内容——输入框是空的，没有保存任何东西');
+      p.viewpoint.push({ id: uid('vp'), date: TODAY, mood: '自记', domain: 'mood', text: txt, visibility: 'private', in_use: 1 });
+      state.moodDraft = '';
+      showToast('已存为私密记录 · 默认不进导出、不进 AI、不进一页纸');
+      return render();
+    }
+    case 'add-question': {
+      const p = P();
+      const v = visible(p.visits).find((x) => x.planned) || visible(p.visits)[0];
+      if (!v) return showToast('还没有可挂问题的复诊记录');
+      v.questions.push({ id: uid('q'), text: '（待你补充）这个阶段我还不确定的是什么', asked: 0 });
+      showToast('已加一条问题（占位文本，请在复诊前改掉）');
+      return render();
+    }
+    case 'add-visit': {
+      const p = P();
+      p.visits.push({ id: uid('v'), date: TODAY, kind: '患者自记的复诊安排', summaryText: '', planned: 1, questions: [], in_use: 1, visibility: 'shared' });
+      showToast('已加一次复诊安排（日期为今天，请按实际改）');
+      return render();
+    }
+    case 'expand-all': $$('.phase-fold').forEach((d) => { d.open = true; }); return;
+    case 'collapse-all': $$('.phase-fold').forEach((d) => { d.open = false; }); return;
     case 'trial-search': showToast('检索完成：2 条命中，1 个通道未取回（演示）'); return render();
     case 'export-prep': {
       const sheet = buildVisitPrepSheet(P());
@@ -1089,11 +1176,18 @@ function act(action, el) {
       return render();
     }
     case 'do-export': {
-      const o = state.exportOpts;
-      const snap = buildExportSnapshot(P(), { privateOn: o.privateOn, demoOn: !o.demoOff });
+      const snap = buildExportSnapshot(P(), optsFromUI(state.exportOpts));
       const n = Object.values(snap).filter(Array.isArray).reduce((a, b) => a + b.length, 0);
       state.lastExport = { kind: 'snapshot', filtered: snap.viewpointFiltered, items: n };
-      showToast(`导出快照已生成：${n} 条 · 已排除 ${snap.viewpointFiltered} 条私密`);
+      showToast(n === 0
+        ? '生成了 0 条：演示数据被默认排除（不是出错，是纪律在起作用）'
+        : `导出快照已生成：${n} 条 · 已排除 ${snap.viewpointFiltered} 条私密`);
+      return render();
+    }
+    case 'mood': {
+      state.moodDraft = state.moodDraft || '';
+      state.moodPick = el?.dataset.mood || null;
+      showToast(`已选「${state.moodPick}」——写一句话再点保存`);
       return render();
     }
     case 'noop': return;
@@ -1118,5 +1212,7 @@ window.addEventListener('hashchange', syncFromHash);
     // 三出口：走查/评审可直接调用，验证"私密与演示数据被排除"不是靠嘴说
     visible, exportable, canLeave, privateCount,
     buildExportSnapshot, buildAgentContext, buildVisitPrepSheet,
+    // 口径与构造函数一起暴露：测试/评审不该自己猜哪个是"全部私密"
+    allPrivate, optsFromUI, inRange, EXITS,
   };
 })();

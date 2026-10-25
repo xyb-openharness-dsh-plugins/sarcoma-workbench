@@ -278,3 +278,10 @@ svg.chart .ax{fill:var(--muted);font-size:10px;font-variant-numeric:tabular-nums
   .table{font-size:11.5px}
   .table th,.table td{padding:7px 6px}
 }
+
+/* ---- 空态 / 折叠操作 / 警示小注（P1-6 / P1-11 / P1-13 修复时新增） ---- */
+.empty-state{margin:12px 0;padding:16px 18px;border:1px dashed var(--line);border-radius:12px;background:var(--surface)}
+.empty-state b{display:block;font-size:14.5px;margin-bottom:6px}
+.empty-state p{margin:6px 0 0;font-size:13px;color:var(--ink-2);line-height:1.6}
+.fold-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.small-note.warn{color:#6f5316;background:var(--warn-bg);border-left:3px solid #e0c58f;padding:8px 10px;border-radius:6px;margin-top:8px}

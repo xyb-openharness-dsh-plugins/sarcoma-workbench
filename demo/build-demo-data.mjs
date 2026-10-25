@@ -202,10 +202,13 @@ const P1 = {
       visibility: 'shared', recorder: 'patient', domain: 'daily',
     },
   ],
+  // 生育与亲密：页面标"私密"，数据就必须是 private。
+  // 第一版这里全是 shared，页面戴着"私密"胶囊、三出口却照放——标签与数据不一致，
+  // 过滤器只会信数据，于是"私密"变成了纯装饰（P1-17）。
   fertility: [
-    { id: 'fe1', date: '2025-04-26', item: '医生是否提过生育力保存', value: '是', note: '化疗前门诊提到，建议咨询生殖中心。' },
-    { id: 'fe2', date: '2025-05-20', item: '是否已完成生育力咨询', value: '是', note: '生殖中心咨询 1 次，记录已留存。' },
-    { id: 'fe3', date: '2025-08-01', item: '康复评估', value: '不记得', note: '' },
+    { id: 'fe1', date: '2025-04-26', item: '医生是否提过生育力保存', value: '是', note: '化疗前门诊提到，建议咨询生殖中心。', visibility: 'private' },
+    { id: 'fe2', date: '2025-05-20', item: '是否已完成生育力咨询', value: '是', note: '生殖中心咨询 1 次，记录已留存。', visibility: 'private' },
+    { id: 'fe3', date: '2025-08-01', item: '康复评估', value: '不记得', note: '', visibility: 'private' },
   ],
   documents: [
     { id: 'd1', name: '术后病理报告.pdf', kind: '病理', date: '2025-05-08', parseStatus: '已解析', source: '本机导入' },
@@ -298,7 +301,9 @@ const P2 = {
       ],
     },
     {
-      id: 'sp2', lineNo: 2, regimen: '帕唑帕尼 800 mg qd', dateStart: '2025-11-02', dateEnd: '',
+      // 已换线就必须有结束日：dateEnd 留空会让这条线"永远没结束"，
+      // 把后面整段记录都算进来（跨线串味）。换线日 = 下一线开始前一天。
+      id: 'sp2', lineNo: 2, regimen: '帕唑帕尼 800 mg qd', dateStart: '2025-11-02', dateEnd: '2026-07-14',
       cycleNo: 0, cyclePlan: '连续口服', status: '已换线', recorder: 'caregiver',
       reasonText: '医生原话：「影像上结节在长，先换口服靶向，化疗先停。」',
       cycles: [{ d: '2025-11-02', n: 1, note: '开始口服' }],
@@ -313,6 +318,9 @@ const P2 = {
   functionLog: [
     { id: 'fp1', domain: 'wound', date: '2025-01-08', measure: '', value: null, unit: '', side: '', text: '腹部切口愈合，偶有牵拉痛。', recorder: 'caregiver' },
     { id: 'fp2', domain: 'lymphedema', date: '2026-09-20', measure: '双下肢踝上 10 cm 周径', value: 24.5, unit: 'cm', side: '左', text: '左下肢轻度水肿', recorder: 'caregiver' },
+    // 第 2 线（帕唑帕尼）期间的不良反应：只属于这一线，不该出现在别的线里。
+    { id: 'fp4', domain: 'ae', date: '2025-12-10', measure: '', value: null, unit: '', side: '', text: '手脚发红脱皮，走路有点疼（自述）。', recorder: 'caregiver' },
+    { id: 'fp5', domain: 'ae', date: '2026-02-20', measure: '', value: null, unit: '', side: '', text: '家里量的血压 145/92，平时不高。', recorder: 'caregiver' },
     { id: 'fp3', domain: 'function', date: '2026-09-20', measure: '连续步行距离（自述）', value: 300, unit: 'm', side: '', text: '饭后散步，走到 300 m 需坐一会', recorder: 'caregiver' },
   ],
   metrics: [
@@ -336,7 +344,7 @@ const P2 = {
     { id: 'vpp1', date: '2026-09-12', mood: '累', text: '第三次住院了，不知道还能撑几轮，家里人都瞒着他说。', visibility: 'private', recorder: 'caregiver', domain: 'fear' },
     { id: 'vpp2', date: '2026-09-12', mood: '平稳', text: '他今天能自己下床走几步，比上周好。', visibility: 'shared', recorder: 'caregiver', domain: 'daily' },
   ],
-  fertility: [{ id: 'fep1', date: '2026-09-25', item: '康复评估', value: '是', note: '营养科 + 康复科会诊各 1 次。' }],
+  fertility: [{ id: 'fep1', date: '2026-09-25', item: '康复评估', value: '是', note: '营养科 + 康复科会诊各 1 次。', visibility: 'private' }],
   documents: [
     { id: 'dp1', name: '术后病理报告 2024-11-28.pdf', kind: '病理', date: '2024-11-28', parseStatus: '已解析', source: '本机导入' },
     { id: 'dp2', name: '腹盆腔 CT 2026-09-10.pdf', kind: '影像', date: '2026-09-10', parseStatus: '已解析', source: '本机导入' },

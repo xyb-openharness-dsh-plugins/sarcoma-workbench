@@ -69,21 +69,11 @@ test('每个部位最多一条激活基线（H6）', () => {
   }
 })
 
-test('隐私：存在 private 条目，且过滤函数三出口行为一致（K5）', () => {
+test('隐私：存在 private 条目（K5 前提）', () => {
   const priv = D.profiles.flatMap((p) => p.viewpoint.filter((v) => v.visibility === 'private'))
   assert.ok(priv.length > 0, '必须存在 private 条目，否则过滤逻辑无法被验证')
-
-  // 与 app.js 中的可见性契约保持一致：默认排除 private
-  const visible = (list, { includePrivate = false } = {}) =>
-    list.filter((x) => includePrivate || x.visibility !== 'private')
-
-  for (const p of D.profiles) {
-    const shown = visible(p.viewpoint)
-    const all = visible(p.viewpoint, { includePrivate: true })
-    assert.equal(all.length, p.viewpoint.length, '显式放开时应返回全部')
-    assert.ok(shown.every((v) => v.visibility !== 'private'), '默认出口不得含 private')
-    assert.equal(shown.length + p.viewpoint.filter((v) => v.visibility === 'private').length, p.viewpoint.length)
-  }
+  const fert = D.profiles.flatMap((p) => (p.fertility || []).filter((v) => v.visibility === 'private'))
+  assert.ok(fert.length > 0, '生育与亲密条目必须是 private（页面标了"私密"，数据就必须是）')
 })
 
 test('演示数据唯一源：文件由构建器生成，头部带"请勿手改"标记', () => {
@@ -92,10 +82,46 @@ test('演示数据唯一源：文件由构建器生成，头部带"请勿手改"
   assert.ok(raw.includes('window.DEMO = {'), '必须是可直接被原型加载的全局赋值')
 })
 
-test('演示文案不含禁词（K1/K2/K3）', () => {
+test('演示数据不含禁词（K1/K2/K3）', () => {
   const blob = JSON.stringify(D)
   const hits = FORBIDDEN.filter((w) => blob.includes(w))
   assert.deepEqual(hits, [], `演示数据命中禁词：${hits.join('、')}`)
+})
+
+/* 模板文案的禁词扫描必须单独做：只看 JSON.stringify(D) 会漏掉 app.js 里写死的句子，
+   "应接受康复评估"就是这么溜过去的（独立评审 P0-4 / P1-18）。
+   指令词按**整类**扫（应/应当/需/务必/建议你…），而不是靠一张有限的词表。 */
+test('模板文案不含指令式表述（K2）', () => {
+  const src = read('prototypes/v0.2/app.js') + read('prototypes/v0.2/exits.js') + read('demo/build-demo-data.mjs')
+  // 去掉注释：注释里说明"不输出某某句"是合法的，不能算命中。
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .map((l) => l.replace(/(^|[^:])\/\/.*$/, '$1'))
+    .join('\n')
+  const IMPERATIVE = [
+    /应接受/, /应当去/, /应当接受/, /建议你/, /建议您/, /你需要去/, /您需要去/,
+    /务必/, /必须去/, /一定要去/, /尽快去/, /立即就医/, /马上就医/,
+    /该复查了/, /已逾期/, /已超期/, /逾期未复查/,
+  ]
+  const hits = []
+  for (const re of IMPERATIVE) {
+    // 医生原话引用（用「」包住）允许保留：那是记录，不是工作台在说话。
+    // 注意：不能把 " 也算豁免——HTML 模板行行都有 data-action="..."，那样等于全豁免，
+    // 变异测试（塞一句"应接受康复评估"进去）会显示全绿而实际漏检。
+    const lines = code.split('\n').filter((l) => re.test(l) && !/「[^」]*」/.test(l))
+    if (lines.length) hits.push(`${re.source} → ${lines.length} 行`)
+  }
+  assert.deepEqual(hits, [], `模板文案出现指令式表述：${hits.join('；')}`)
+})
+
+test('接口口径与出口实现同源：app.js 不得自带过滤实现', () => {
+  const app = read('prototypes/v0.2/app.js')
+  // 产品里出现自己的 filter(x=>x.visibility!==...) 就说明又多了个实现
+  const local = /function\s+(visible|canLeave|exportable|privateCount)\s*\(/.test(app)
+  assert.equal(local, false, 'app.js 不得重新定义过滤函数——必须用 exits.js（单一实现）')
+  assert.ok(app.includes("globalThis.SARCO_EXITS"), 'app.js 必须加载 exits.js')
+  assert.ok(!app.includes('function buildExportSnapshot'), 'app.js 不得自带导出实现')
 })
 
 test('亚型不做枚举：存的是报告原文文本，不是编码', () => {
