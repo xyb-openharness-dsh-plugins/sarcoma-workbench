@@ -24,7 +24,8 @@
     "audit": "node scripts/check-conformance.mjs .",
     "release:check": "npm run check && npm run audit",
     "pack:check": "npm pack --dry-run",
-    "probe:page-view": "node scripts/probe-page-view.mjs"
+    "probe:page-view": "node scripts/probe-page-view.mjs",
+    "probe:primer": "node scripts/probe-disease-primer.mjs"
   },
   "dsh": {
     "bundle": {
