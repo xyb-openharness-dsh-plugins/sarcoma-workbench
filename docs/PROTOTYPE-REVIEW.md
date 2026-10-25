@@ -8,9 +8,8 @@
 | 项 | 内容 |
 | --- | --- |
 | HTML 实际路径 | `prototypes/v0.2/index.html`（`file://` 双击可开，不需要起服务） |
-| 提交（可核对） | 原型目录最后一次提交见 `git log -1 --format=%h -- prototypes/`；该提交之后 `git status --short prototypes/` 为空即与本文一致 |
 | 版本 | **0.2.1**（`VERSION` / `package.json` / `app.js:APP_INFO` 三处一致；顶栏徽章与页脚由 `APP_INFO` 渲染时覆盖，已无写死副本） |
-| 提交 | 原型文件最后一次改动在第 6 行那组指纹对应的提交（下表按内容算，可自证）；此后只改探针与文档，不动 `prototypes/` |
+| 提交 | **`45c293b`**（`prototypes/` 最后一次改动就在这个提交；核对命令 `git log -1 --format=%h -- prototypes/` 应输出同值，`git status --short prototypes/` 应为空） |
 | SHA-256 | `index.html` `3afd6ccd…d13f650b` ／ `app.js` `e93d0829…733cd67c2` ／ `demo-data.js` `fce2af8a…19eaea995` ／ `primer-data.js` `beb4bb9f…614b8e83d`（`shasum -a 256 prototypes/v0.2/*` 可复算；评审 N2 指出旧表记的是 `acf7d39` 的值，已按当前文件重算） |
 | 预览环境 | macOS arm64 · Chrome 145 · 视口 1280 / 1024 / 768 / 390 四档；截图见 `docs/shots/`（25 张） |
 | 模拟数据与真实功能界限 | **全部为虚构演示档案**（A 肢体原发 / B 腹膜后复发），由 `demo/build-demo-data.mjs` 单一来源生成；不读写真实文件、不调用模型或宿主 API、不连数据库 |
