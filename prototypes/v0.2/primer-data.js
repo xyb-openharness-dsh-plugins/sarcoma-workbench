@@ -45,7 +45,7 @@ window.DISEASE_PRIMER = {
       points: [
         '指南给的是「通常怎么做」，不是「你该怎么做」。版本号必须写清：同一份指南隔一年，条目会变。',
         '本台对未取得原件的文件只记「存在」与「大致讲什么」，不引用其具体条文，页码一律写待核。',
-        '国内分期（CNLC 一类）与 AJCC 在此病种不做换算；两套并存时两行并列，各自标注出处。'
+        '国内指南（CSCO 骨与软组织肿瘤诊疗指南）与 AJCC 分期回答的不是同一个问题：前者讲治疗怎么选，后者讲解剖范围到了哪一步。两者不互推、不换算，引用时各自标注出处。'
       ],
       sources: [
         { org: 'NCCN', doc: 'NCCN Guidelines · Soft Tissue Sarcoma', version: 'V3.2026', original: false, page: '页码待核' },

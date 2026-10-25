@@ -6,14 +6,15 @@
  * 跑法：NODE_OPTIONS= node scripts/shoot-pages.mjs [--out docs/shots]
  * 产物：docs/shots/<序号>-<名字>-<宽度>.png
  */
-import { createRequire } from 'node:module'
 import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadPuppeteer, PUPPETEER_HINT } from './lib/load-puppeteer.mjs'
 
-const require = createRequire('/Users/qinxiaoqiang/.workbuddy/binaries/node/workspace/')
-const puppeteer = require('puppeteer-core')
+/* 解析顺序见 scripts/lib/load-puppeteer.mjs；换机设 PUPPETEER_PATH 即可（评审 P2-3）。 */
+const puppeteer = loadPuppeteer()
+if (!puppeteer) { console.log(PUPPETEER_HINT); process.exit(2) }
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const PROTO = path.join(ROOT, 'prototypes', 'v0.2')

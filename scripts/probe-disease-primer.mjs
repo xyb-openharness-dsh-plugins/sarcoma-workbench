@@ -17,7 +17,7 @@ import { readFile } from 'node:fs/promises'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { existsSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { createRequire } from 'node:module'
+import { loadPuppeteer, PUPPETEER_HINT } from './lib/load-puppeteer.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
@@ -78,14 +78,9 @@ async function injectDataDefect(page) {
 async function main() {
   const chrome = findChrome()
   if (!chrome) { console.log('找不到 Chrome：设置 CHROME_PATH 后重试。跳过等于没有这条闸门。'); process.exit(2) }
-  let puppeteer
-  try {
-    const require = createRequire('/Users/qinxiaoqiang/.workbuddy/binaries/node/workspace/')
-    puppeteer = require('puppeteer-core')
-  } catch {
-    console.log('缺少 puppeteer-core（家族 workspace 未装，或本机路径不同）。跳过等于没有这条闸门。')
-    process.exit(2)
-  }
+  /* puppeteer-core 的解析不再写死本机路径（评审 P2-3）：换机时设 PUPPETEER_PATH 即可。 */
+  const puppeteer = loadPuppeteer()
+  if (!puppeteer) { console.log(PUPPETEER_HINT); process.exit(2) }
 
   const server = await serve()
   // 默认页面按"本仓哪个存在"自动挑：项目里跑就用自己的原型，脚手架里跑才用示例页。

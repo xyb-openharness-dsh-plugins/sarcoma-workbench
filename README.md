@@ -2,7 +2,13 @@
 
 软组织肉瘤（STS）患者与照护者的本机病程资料工作台：把散落的病理与分型、手术与切缘记录、治疗线序与副作用、复查影像与功能变化整理成可核对、可回溯的材料，并整理成就诊能带着走的问题清单。
 
-这是接入骨架，尚未实现真实业务。初始化后先将 [项目设计提示词](docs/DESIGN-PROMPT.md) 交给当前Agent；它应展示实际路径并以已有用户/场景/流程素材对齐设计者、研究与取舍原则。癌种项目另有 [完整专用提示词](prompts/NEW-CANCER-WORKBENCH.md)。需求见 [BRIEF](docs/BRIEF.md)，规格见 [SPEC](docs/SPEC.md)，任务见 [TASKS](docs/TASKS.md)；先读 [AGENTS](AGENTS.md)。CLI输出交接与首问，实际对话由Agent接续。
+**当前状态分三块，不要混读**：
+
+- **设计包（已交付）**：需求 [BRIEF](docs/BRIEF.md)、规格 [SPEC](docs/SPEC.md)、分期与分期组口径 [DIFF-MATRIX](docs/DIFF-MATRIX.md)、临床数据覆盖 [CLINICAL-DATA-2026](docs/CLINICAL-DATA-2026.md)、交互路径 [INTERACTION-DESIGN](docs/INTERACTION-DESIGN.md) 与 [28-INTERACTION-PATH-DESIGN](docs/28-INTERACTION-PATH-DESIGN.md)、独立评审 [DESIGN-REVIEW](docs/DESIGN-REVIEW.md)。
+- **HTML 原型（已交付，`prototypes/v0.2/`，v0.2.1）**：12 个一级页 + 整页视图 + 两套演示档案（A 肢体/原发、B 腹膜后/复发），`file://` 双击即开。交互红线 HVT X1–X4 走查 **102/102**（`node scripts/probe-interaction.mjs`，自测 4/4 命中），原型四必查件 28/28，疾病概要 9/9。
+- **M6–M8（未做）**：真实业务库、装机包、push 与家族回流都还没开始。仓库里没有 `schema/` 落地表、没有 `.tgz` 产物、多数远端为空。**G1 尚未签认**——原型是待评审材料，不是已确认版本。
+
+初始化后先将 [项目设计提示词](docs/DESIGN-PROMPT.md) 交给当前Agent；它应展示实际路径并以已有用户/场景/流程素材对齐设计者、研究与取舍原则。癌种项目另有 [完整专用提示词](prompts/NEW-CANCER-WORKBENCH.md)。先读 [AGENTS](AGENTS.md)。
 
 ## 疾病概要
 
@@ -62,7 +68,7 @@ WHO《软组织与骨肿瘤分类》第 5 版（2020）按分化方向分类：�
 
 - 一个 DSH 工作台注册、认证的健康接口、版本展示与标准/大字切换。
 - 已明确选择布局：business-first。business-first 使用 customFrame；模板不创建会话或复制聊天。需要 AI 协助时按官方合同接入原生 conversation 和会话管理。
-- 无业务数据库、无演示患者、无真实密钥；所有业务页按确认 spec 逐项实现。
+- 原型层有演示档案与演示数据（`demo/build-demo-data.mjs` 单一来源生成），**全部为虚构样本**，不是真实患者；真实业务库、真实密钥、装机包都还没有。
 
 ## 开发与本地验收
 

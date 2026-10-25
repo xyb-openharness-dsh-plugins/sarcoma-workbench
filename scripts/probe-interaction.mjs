@@ -30,7 +30,7 @@ import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createRequire } from 'node:module'
+import { loadPuppeteer, PUPPETEER_HINT } from './lib/load-puppeteer.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
@@ -111,8 +111,23 @@ async function gotoFresh(page, base) {
   if (SELF_TEST) await injectDefects(page)
 }
 
-async function clickNav(page, view) {
-  const ok = await page.evaluate((v) => {
+/* 切演示档案：顶栏「档案」按钮 → 弹窗里的 data-profile 行。
+   癌种专属断言要两个档案都看（A 有分期、B 是腹膜后未定义分期组）。 */
+async function setProfile(page, key) {
+  const ok = await page.evaluate((k) => {
+    const btn = document.getElementById('profile-btn')
+    if (!btn) return false
+    btn.click()
+    const row = document.querySelector(`[data-profile="${k}"]`)
+    if (!row) return false
+    row.click()
+    return true
+  }, key)
+  await sleep(220)
+  return ok
+}
+
+async function clickNav(page, view) {  const ok = await page.evaluate((v) => {
     const b = document.querySelector(`#nav [data-view="${v}"]`)
     if (!b) return false
     b.click()
@@ -221,6 +236,14 @@ async function injectDefects(page) {
           b.textContent = `自测编辑入口 ${i + 1}`
           main.appendChild(b)
         }
+      }
+
+      /* 缺陷④：把一句判断直接写进看板大标题（P0-1 的原样）。X3i 必须响。
+         只看 childList，所以给 h1 打个标记防自激；render() 重建后标记消失，会再注入。 */
+      const h1 = main && main.querySelector('.hero h1')
+      if (h1 && h1.dataset.stUi !== '1') {
+        h1.dataset.stUi = '1'
+        h1.textContent = '腹膜后复发不可切除：口服靶向治疗中'
       }
     })
     obs.observe(document.body, { childList: true, subtree: true })
@@ -641,6 +664,100 @@ async function x3(page, base) {
   check('X3g', '全站无「不可恢复」文案', noRecover === 0, `命中 ${noRecover}`)
   check('X3h', '存在「改这一条」更正入口（删除=更正）', correct > 0, `命中 ${correct}`)
 
+  /* ---- X3i：判读词必须带出处（2026-10-25 独立评审 P0-1 的回归闸） ----
+     原来只 grep 源码里的禁词，抓不到"演示数据里的档案标题"——B 的看板 h1 写着
+     「腹膜后复发不可切除」，界面上一句判断就这么上屏了。现在改成扫渲染后的 DOM：
+     每个最内层文字块里出现判读词时，必须同时带出处标记，否则记一条 dirty。 */
+  const dirty = []
+  for (const prof of ['A', 'B']) {
+    await gotoFresh(page, base)
+    const switched = await setProfile(page, prof)
+    if (!switched) { dirty.push(`${prof}: 切档案失败`); continue }
+    const views = await page.evaluate(() => [...document.querySelectorAll('#nav [data-view]')].map((b) => b.dataset.view))
+    for (const view of views) {
+      await clickNav(page, view)
+      const n = await page.evaluate(() => document.querySelectorAll('.subnav [data-sub]').length)
+      const subs = n ? [...Array(n).keys()] : [null]
+      for (const i of subs) {
+        if (i !== null) await clickTabIndex(page, i)
+        const r = await page.evaluate(() => {
+          const f = window.__scanJudge ? window.__scanJudge() : null
+          if (!f) return { missing: true, forbidden: [], unattributed: [] }
+          return { missing: false, forbidden: f.forbidden, unattributed: f.unattributed }
+        })
+        if (r.missing) { dirty.push(`${prof}/${view}: 页面没有 __scanJudge 钩子`); continue }
+        const bad = r.forbidden.concat(r.unattributed)
+        if (bad.length) dirty.push(`${prof}/${view}/${i == null ? '-' : i}：${bad.slice(0, 2).join(' ／ ')}`)
+      }
+    }
+  }
+  check('X3i', '判读词必须带出处：两档案 × 全部页面与页签，无出处判读词 0 处',
+    dirty.length === 0, dirty.length ? dirty.slice(0, 3).join(' ／ ') : '0 处')
+
+  /* ---- X3j–X3n：SCENARIOS §「本癌种额外断言」的机读版（评审 P2-4：原来 0 覆盖） ---- */
+  await gotoFresh(page, base)
+  await setProfile(page, 'B')
+  await clickNav(page, 'tumor')
+  await clickTabIndex(page, 2)
+  const stageB = await page.evaluate(() => document.getElementById('main').innerText)
+  check('X3j', '腹膜后档案：分期写「该部位 AJCC 8 未定义分期组」，不写「未回报」',
+    stageB.includes('该部位 AJCC 8 未定义分期组') && !/未回报/.test(stageB.replace(/未回报[^\n]*分期组/g, '')),
+    stageB.includes('该部位 AJCC 8 未定义分期组') ? '文案正确' : `未见该句；片段=${stageB.slice(0, 60)}`)
+
+  await setProfile(page, 'A')
+  await clickNav(page, 'tumor')
+  await clickTabIndex(page, 2)
+  /* 只看第一张卡（分期卡）本身：页脚那条 notice 是对所有人的通用解释，
+     里面必然出现「该部位 AJCC 8 未定义分期组」这句话，拿整页判断一定假红。 */
+  const stageACard = await page.evaluate(() => (document.querySelector('#main .card') || {}).innerText || '')
+  check('X3k', '有分期行的档案：分期卡照抄 pT2N0M0，不出现「未定义分期组」',
+    stageACard.includes('pT2N0M0') && !stageACard.includes('该部位未定义分期组'),
+    stageACard.includes('pT2N0M0') ? 'pT2N0M0 在场' : `未找到 pT2N0M0；卡内=${stageACard.slice(0, 50)}`)
+
+  await clickNav(page, 'surgery')
+  await clickTabIndex(page, 1)
+  const marginTxt = await page.evaluate(() => document.getElementById('main').innerText)
+  check('X3l', '切缘页只抄原文：不出现「切干净 / 切净」这类评价词',
+    !/切干净|切净/.test(marginTxt), /切干净|切净/.test(marginTxt) ? '命中评价词' : '0 命中')
+
+  await clickNav(page, 'function')
+  await clickTabIndex(page, 0)
+  const funcTxt = await page.evaluate(() => document.getElementById('main').innerText)
+  check('X3m', '功能页不出现 MSTS（医生填的 ClinRO，产品不给）', !/MSTS/.test(funcTxt),
+    /MSTS/.test(funcTxt) ? '命中 MSTS' : '0 命中')
+
+  await clickNav(page, 'treatment')
+  await clickTabIndex(page, 3)  // 页签顺序：线序时间轴 0 / 化疗周期 1 / 放疗 2 / 靶向与免疫 3
+  const drugTxt = await page.evaluate(() => document.getElementById('main').innerText)
+  check('X3n', '药物条目统一标「获批状态未核实」', drugTxt.includes('获批状态未核实'),
+    drugTxt.includes('获批状态未核实') ? '标注在场' : `未见标注；片段=${drugTxt.slice(0, 60)}`)
+
+  await clickNav(page, 'labs')
+  await clickTabIndex(page, 1)
+  const ulnTxt = await page.evaluate(() => document.getElementById('main').innerText)
+  check('X3o', '缺上限的指标带「上限未提供 · ×ULN 不计算」徽章',
+    ulnTxt.includes('上限未提供') || ulnTxt.includes('×ULN 不计算'),
+    ulnTxt.includes('上限未提供') ? '徽章在场' : '未见徽章')
+
+  await clickNav(page, 'function')
+  await clickTabIndex(page, 1)
+  await page.evaluate(() => document.querySelector('[data-action="more-toggle"]')?.click())
+  await sleep(120)
+  await page.evaluate(() => document.querySelector('[data-pv="tess"]')?.click())
+  await sleep(300)
+  const tessBefore = await page.evaluate(() => document.querySelectorAll('.pv-body .tess-item').length)
+  await page.evaluate(() => document.querySelector('[data-tess-limb="上肢"]')?.click())
+  await sleep(250)
+  const tessAfter = await page.evaluate(() => ({
+    n: document.querySelectorAll('.pv-body .tess-item').length,
+    pressed: document.querySelector('[data-tess-limb="上肢"]')?.getAttribute('aria-pressed')
+  }))
+  check('X3p', 'TESS 切「上肢」：题数 30 → 29 且 aria-pressed 翻转',
+    tessBefore === 30 && tessAfter.n === 29 && tessAfter.pressed === 'true',
+    `切前=${tessBefore} 切后=${tessAfter.n} pressed=${tessAfter.pressed}`)
+  await page.evaluate(() => document.querySelector('.pv-head-actions .pv-btn-icon')?.click())
+  await sleep(300)
+
   const fails = results.slice(start).filter((r) => !r.ok)
   check('X3', 'X3 通道一致：手工收敛 + AI 候选闭环 + 无裸删除',
     fails.length === 0,
@@ -740,14 +857,9 @@ async function pathC(page, base) {
 async function main() {
   const chrome = findChrome()
   if (!chrome) { console.log('找不到 Chrome：设置 CHROME_PATH 后重试。跳过等于没有这条闸门。'); process.exit(2) }
-  let puppeteer
-  try {
-    const require = createRequire('/Users/qinxiaoqiang/.workbuddy/binaries/node/workspace/')
-    puppeteer = require('puppeteer-core')
-  } catch {
-    console.log('缺少 puppeteer-core（家族 workspace 未装，或本机路径不同）。跳过等于没有这条闸门。')
-    process.exit(2)
-  }
+  /* puppeteer-core 的解析不再写死本机路径（评审 P2-3）：换机时设 PUPPETEER_PATH 即可。 */
+  const puppeteer = loadPuppeteer()
+  if (!puppeteer) { console.log(PUPPETEER_HINT); process.exit(2) }
 
   const server = await serve()
   const base = argOf('--url') || `http://127.0.0.1:${PORT}${BASE_PATH}`
@@ -786,12 +898,12 @@ async function main() {
   const failed = results.filter((r) => !r.ok)
   console.log(`\n${failed.length ? 'FAIL' : 'PASS'}  ${results.length - failed.length}/${results.length}`)
   if (SELF_TEST) {
-    const injected = ['A-09', 'X3a', 'X4-03']
+    const injected = ['A-09', 'X3a', 'X4-03', 'X3i']
     const hit = injected.filter((id) => results.some((r) => r.id === id && !r.ok))
-    const enough = hit.length >= 2
+    const enough = hit.length >= 3
     console.log(enough
-      ? `自测：注入 3 个缺陷（删除「加一条问题」/ 候选泄漏进事实卡 / 伪造 2 个手工编辑入口），命中 ${hit.length}/3 条 FAIL：${hit.join('、')}`
-      : `自测失败：注入 3 个缺陷只命中 ${hit.length}/3 条 FAIL（要求 ≥2）：${hit.join('、') || '无'}，闸门漏检`)
+      ? `自测：注入 4 个缺陷（删除「加一条问题」/ 候选泄漏进事实卡 / 伪造 2 个手工编辑入口 / 看板标题写成判读结论），命中 ${hit.length}/4 条 FAIL：${hit.join('、')}`
+      : `自测失败：注入 4 个缺陷只命中 ${hit.length}/4 条 FAIL（要求 ≥3）：${hit.join('、') || '无'}，闸门漏检`)
     process.exit(enough ? 0 : 1)
   }
   process.exit(failed.length ? 1 : 0)

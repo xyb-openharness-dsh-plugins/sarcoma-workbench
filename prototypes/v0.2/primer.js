@@ -8,7 +8,7 @@
  *   <script src="primer.js"></script>        // 本文件，自动挂载
  *   window.DiseasePrimer.mount()             // 顶栏是 JS 渲染时手工再调一次
  *
- * 规范见 docs/36-DISEASE-PRIMER.md；验收见 scripts/probe-disease-primer.mjs。
+ * 规范见 docs/DISEASE-PRIMER.md；验收见 scripts/probe-disease-primer.mjs。
  */
 (function (global) {
   'use strict'

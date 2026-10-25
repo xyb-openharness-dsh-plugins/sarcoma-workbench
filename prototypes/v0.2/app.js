@@ -377,15 +377,23 @@ function pinHtml() {
 }
 
 /* ---------------- 各一级页 ---------------- */
+/* 分期空态的说法只有一个来源（看板任务卡 / 档案位置卡 / 我的肿瘤 三处共用）：
+   AJCC 第 8 版对头颈、胸腹腔内脏（含腹膜后）、眼眶的软组织肉瘤不定义分期组，
+   这些部位空着是"没有这个分期组"，不是"报告还没出"。 */
+const NO_GROUP_SITE_RE = /腹膜后|腹腔|盆腔|胸腔|纵隔|头颈|眼眶|内脏/;
+function stageEmptyLabel(p) {
+  const site = (p.site[p.site.length - 1] || {}).site || '';
+  return NO_GROUP_SITE_RE.test(site) ? '该部位未定义分期组' : '未回报';
+}
 function vDashboard() {
   const p = P();
   const imgs = p.imaging;
   const lastImg = imgs[imgs.length - 1];
   const lastVisit = [lastImg && lastImg.d, ...p.questions.map((q) => q.d)].filter(Boolean).sort().slice(-1)[0];
   const today = p.window_end;
-  const stageTxt = p.staging.length ? txt(p.staging[0].tnm) : '未回报';
+  const stageTxt = p.staging.length ? txt(p.staging[0].tnm) : stageEmptyLabel(p);
   const tasks = [
-    ['tumor', 2, '补一次分期记录', '本档案的分期行：' + (p.staging.length ? '已记录 1 行' : '未回报'), '①'],
+    ['tumor', 2, '补一次分期记录', '本档案的分期行：' + (p.staging.length ? '已记录 1 行' : stageEmptyLabel(p)), '①'],
     ['labs', 1, '看一眼一图秀', '默认 3 条数值线 + 1 条分类序列', '②'],
     ['followup', 2, '带问题清单去复诊', `已记 ${p.questions.length} 条，问过 ${p.questions.filter((q) => q.asked).length} 条`, '③'],
     ['imaging', 2, '整理一份报告', '上传 → 解析候选 → 逐项核对 → 入库', '④'],
@@ -427,7 +435,7 @@ function vDashboard() {
       </div>
       <div class="card"><div class="card-head"><div><h2>档案位置</h2><p>事实层四个词分开摆</p></div></div>
         <div class="mini-list">
-          <div class="mini-item"><div><b>亚型</b><p>${esc(txt(p.pathology[p.pathology.length - 1].subtype))}</p></div><span>病理</span></div>
+          <div class="mini-item"><div><b>亚型</b><p>${esc(txt(p.pathology[p.pathology.length - 1].subtype))}</p></div><span>病理报告</span></div>
           <div class="mini-item"><div><b>分期</b><p>${esc(p.staging.length ? p.staging[0].note : '本档案没有分期记录行，界面显示「未回报」')}</p></div><span>${esc(stageTxt)}</span></div>
           <div class="mini-item"><div><b>分级</b><p>FNCLCC 三组件</p></div><span>${esc(p.grade.length ? p.grade[0].grade : '—')}</span></div>
           <div class="mini-item"><div><b>部位</b><p>${esc(p.site[p.site.length - 1].size_text)}</p></div><span>${esc(p.site[p.site.length - 1].site)}</span></div>
@@ -452,11 +460,19 @@ function vTumor() {
       ${judgeLine}`;
   }
   if (s === 2) {
+    /* AJCC 第 8 版对头颈、胸腹腔内脏（含腹膜后）、眼眶的软组织肉瘤不定义分期组。
+       这些部位空着的原因不是"报告还没出"，而是"这一版没有这个分期组"——
+       一律写「未回报」会让腹膜后患者一直在等一张不会来的报告（评审 P1-6）。 */
+    const siteTxt = (p.site[p.site.length - 1] || {}).site || '';
+    const noGroup = NO_GROUP_SITE_RE.test(siteTxt);
     const stageBlock = p.staging.length
       ? `<div class="card"><div class="card-head"><div><h2>分期（AJCC 第 8 版）</h2><p>报告原文照抄；分期组由医生判定，本台不合并计算</p></div>${pill('已记录', 'green')}</div>
           ${p.staging.map((r, i) => recBtn('staging', i, esc(r.tnm), `${esc(r.d)} · ${esc(r.system)} · ${esc(r.source)}`, '')).join('')}
           <p class="table-note">${esc(p.staging[0].note)}</p></div>`
-      : `<div class="card"><div class="card-head"><div><h2>分期（AJCC 第 8 版）</h2><p>这个档案没有分期记录行</p></div>${pill('未回报', 'grey')}</div>
+      : noGroup
+        ? `<div class="card"><div class="card-head"><div><h2>分期（AJCC 第 8 版）</h2><p>${esc(siteTxt)}：这一版没有给这个部位定分期组</p></div>${pill('该部位未定义分期组', 'grey')}</div>
+          <div class="empty"><h3>该部位 AJCC 8 未定义分期组</h3><p>不是「报告还没出」——是 AJCC 第 8 版对头颈、胸腹腔内脏（含腹膜后）、眼眶的软组织肉瘤不设分期组（NCCN STS V3.2026 ST-5：needs data collection before defining a stage grouping）。这一格空着就是正确状态。</p><p style="margin-top:6px">报告里若写了 TNM 或分期组，按原文补一行；本台不替你换算。</p></div></div>`
+        : `<div class="card"><div class="card-head"><div><h2>分期（AJCC 第 8 版）</h2><p>这个档案没有分期记录行</p></div>${pill('未回报', 'grey')}</div>
           <div class="empty"><h3>未回报</h3><p>本档案没有分期记录行。本台不补期别、不推算分期组；这一格保持空。</p><p style="margin-top:6px">分期报告出来以后，可以按报告原文补一行「TNM + 系统 + 报告日期 + 报告机构」。</p></div></div>`;
     return `${pageHead()}${stageBlock}
       <div class="notice">头颈、胸腹腔内脏、眼眶的软组织肉瘤在 AJCC 第 8 版里未定义分期组（NCCN STS V3.2026 ST-5：needs data collection before defining a stage grouping）。遇到这些部位，界面只写「该部位 AJCC 8 未定义分期组」，不补期别。</div>
@@ -1195,8 +1211,61 @@ function setSub(i) {
 }
 
 /* ---------------- AI 面板 ---------------- */
+/* 判断类措辞自检（三层边界的机器版，2026-10-25 独立评审 P0-1 后重写）
+   第 ③ 层（好坏 / 稳定 / 进展 / 复发 / 可切除 / 耐药）一句都不该由产品自己说。
+   但"转述医生的判断"是允许的第一层事实——前提是写明谁说的、哪天说的。
+   所以分三桶：
+   - 硬禁词：出现即命中，有没有出处都不行（「建议治疗」这类建议性文案）；
+   - 判读词 + 出处：记为「转述」，是事实；
+   - 判读词 无出处：这才是越界，就是这次的 P0。
+   旧版只查 5 个硬禁词 + 5 个软词，词表里没有「复发 / 不可切除」，于是档案 B 的
+   看板标题「腹膜后复发不可切除：口服靶向治疗中」被整个放过——自检说"未命中"，
+   用户打开第一屏看到的就是一句判断。 */
 const FORBIDDEN = ['建议治疗', '可能复发', '可以停药', '无需就医', '治愈率'];
 const SOFT_WORDS = ['稳定', '进展', '缓解', '好转', '恶化'];
+const JUDGE_WORDS = ['不可切除', '复发', '转移', '耐药', '有效', '无效', '缩小', '增大', '进展', '缓解', '稳定', '好转', '恶化', '晚期', '恶性'];
+/* 出处标记：出现任一个，说明这句是转述别人的话，不是本台的结论。
+   把指南名也算进来——「NCCN 写的是 X」本身就是出处，缺的是"哪一版、哪一页"（那由 36 号的
+   来源三件套管，不在这里查）。 */
+/* 只认"确实在指谁说的"的词。裸「记录」不行——「按周期记录」是动词，会把
+   一句判断误判成有出处（第一版就栽在这：把旧标题塞回去，闸门没响）。 */
+const ATTRIB_RE = /原文|报告|医嘱|MDT|会诊|自述|门诊|指南|共识|NCCN|CSCO|AJCC|WHO|CTCAE/;
+
+function scanJudge() {
+  const scope = document.getElementById('main');
+  if (!scope) return { forbidden: [], unattributed: [], attributed: [] };
+  /* 按"最内层文字块"扫：一块里有几个词就记几条，且不重复记父块的同一段文字 */
+  const nodes = [...scope.querySelectorAll('h1,h2,h3,h4,b,p,span,dt,dd,li,pre,button,label,td,th')]
+    .filter((el) => {
+      const t = el.textContent.trim();
+      if (!t) return false;
+      return !el.querySelector('h1,h2,h3,h4,b,p,span,dt,dd,li,pre,button,label,td,th');
+    });
+  const forbidden = [];
+  const unattributed = [];
+  const attributed = [];
+  const seen = new Set();
+  const push = (arr, w, t) => {
+    const key = `${w}|${t.slice(0, 30)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    arr.push(`${w}：${t.length > 34 ? t.slice(0, 34) + '…' : t}`);
+  };
+  for (const el of nodes) {
+    const t = el.textContent.trim();
+    /* 出处可能不在同一个叶子块里：NCCN 表格把原句放一格、表号放另一格；
+       档案位置卡把「病理」放在右侧 pill 里。所以按"一条记录"的容器再找一遍，
+       但只到 .card / tr / li / .mini-item / .notice 为止——再往上就会把整页的来源
+       都算给某一行，那这个检查就废了。 */
+    const ctx = (el.closest('.card, tr, li, .mini-item, .notice') || el).textContent.trim();
+    for (const w of FORBIDDEN) if (t.includes(w)) push(forbidden, w, t);
+    for (const w of JUDGE_WORDS) {
+      if (!t.includes(w)) continue;
+      push(ATTRIB_RE.test(ctx) ? attributed : unattributed, w, t);
+    }
+  }
+  return { forbidden, unattributed, attributed };
+}
 
 function renderAgent() {
   const body = $('#agent-body');
@@ -1213,7 +1282,7 @@ function renderAgent() {
     <div class="agent-card" id="agent-output"><h4>当前档案</h4><pre>${esc(p.name)} · ${esc(p.meta)}
 当前页：${esc(PAGES.find((x) => x[0] === state.view)[1])}
 已记录：影像 ${p.imaging.length} 条 / 手术 ${p.surgery.length} 条 / 副作用 ${p.tox.length} 条
-分期行：${p.staging.length ? '1 行（原文）' : '未回报'}</pre></div>`;
+分期行：${p.staging.length ? '1 行（原文）' : stageEmptyLabel(p)}</pre></div>`;
   const toggle = $('#agent-toggle');
   if (toggle) {
     toggle.setAttribute('aria-expanded', String(state.agentOpen));
@@ -1240,12 +1309,28 @@ function agentBuild() {
   agentSay(rows.join('\n'));
 }
 function agentCheck() {
-  const text = $('#main').innerText + '\n' + (PAGES.map((x) => x[1] + SUBTITLES[x[0]]).join('\n'));
-  const hits = FORBIDDEN.filter((w) => text.includes(w)).concat(SOFT_WORDS.filter((w) => text.includes(w)));
+  const r = scanJudge();
   const out = $('#agent-output');
   if (!out) return;
-  out.innerHTML = `<h4>判断类措辞自检</h4><div class="agent-check">${hits.length ? hits.map((h) => `<span class="hit">命中：${esc(h)}</span>`).join('') : `<span class="pass">本页文本未命中 ${FORBIDDEN.length} 个硬禁词与 ${SOFT_WORDS.length} 个软判断词</span>`}<span class="pass">数据值来自 demo-data.js，未出现派生结论</span></div>`;
+  /* 三条结论分开报：硬禁词命中 / 无出处的判读词 / 已带出处的转述。
+     中间那条是红线；最后一条要数出来给人看——不是"越多越糟"，是"转述得都对得上人"。 */
+  const chips = []
+    .concat(r.forbidden.map((s) => `<span class="hit">硬禁词 · ${esc(s)}</span>`))
+    .concat(r.unattributed.map((s) => `<span class="hit">无出处判读 · ${esc(s)}</span>`))
+    .concat(r.attributed.slice(0, 6).map((s) => `<span class="pass">转述（有出处）· ${esc(s)}</span>`));
+  const ok = selfCheckClean(r);
+  out.innerHTML = `<h4>判断类措辞自检</h4><div class="agent-check">
+    ${chips.join('') || `<span class="pass">本页文本未命中 ${FORBIDDEN.length} 个硬禁词，也没有无出处的判读词</span>`}
+    ${ok && !r.attributed.length ? '<span class="pass">本页没有出现判读类措辞</span>' : ''}
+    ${r.attributed.length ? `<span class="pass">判读词 ${r.attributed.length} 处，全部带出处（原文 / 记录 / 报告 / MDT）</span>` : ''}
+    <span class="pass">数据值来自 demo-data.js，未出现派生结论</span></div>`;
 }
+/* 供探针直接调用：无硬禁词、且无"无出处判读词"才算干净。 */
+function selfCheckClean(r) {
+  return r.forbidden.length === 0 && r.unattributed.length === 0;
+}
+window.__scanJudge = scanJudge;
+window.__selfCheckClean = selfCheckClean;
 
 /* ---------------- 弹窗 ---------------- */
 let toastTimer;
