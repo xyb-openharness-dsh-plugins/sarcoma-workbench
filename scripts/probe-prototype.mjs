@@ -590,6 +590,33 @@ async function p5(page, base) {
       overflow.length ? overflow.slice(0, 3).join('；') : `12 个一级页均为 ${worst?.iw ?? width}`)
   }
 
+  /* 768 宽逐页签（2026-10-26 补）：P5 上面只测了每个一级页的**默认页签**，
+     「768 宽全页签实测」一直挂在未验证清单里。36 个页签里若有任何一个在平板宽度下
+     横向溢出，用户看到的就是一条横着的滚动条，而默认页签往往是最好看的那一个。
+     只测 768：390 窄宽已单测（P5-390 + P5-agent），1280 是设计宽度，768 才是夹缝。 */
+  await page.setViewport({ width: 768, height: 1024 })
+  await sleep(90)
+  const tabOverflow = []
+  let tabCount = 0
+  for (const view of views) {
+    await clickView(page, view)
+    const n = await page.evaluate(() => document.querySelectorAll('#main .subnav [data-sub]').length)
+    for (let i = 0; i < n; i++) {
+      await page.evaluate((i) => document.querySelectorAll('#main .subnav [data-sub]')[i]?.click(), i)
+      await sleep(40)
+      tabCount++
+      const m = await page.evaluate(() => ({
+        body: document.body.scrollWidth,
+        html: document.documentElement.scrollWidth,
+        iw: innerWidth,
+        label: document.querySelector('#main .subnav [aria-selected="true"]')?.textContent?.trim() || ''
+      }))
+      if (m.body > m.iw + 1 || m.html > m.iw + 1) tabOverflow.push(`${view}/${m.label}: body=${m.body} html=${m.html} > ${m.iw}`)
+    }
+  }
+  check('P5-tab', `768px 逐页签无横向溢出（${tabCount} 个页签全量）`, tabOverflow.length === 0,
+    tabOverflow.length ? tabOverflow.slice(0, 3).join('；') : `12 页 × 各页签共 ${tabCount} 个，均为 768`)
+
   check('P5-v', '三档宽度下「竖排单字」为 0', verticalFails.length === 0,
     verticalFails.length ? verticalFails.slice(0, 3).join('；') : '390/768/1280 各 12 页均未发现')
 

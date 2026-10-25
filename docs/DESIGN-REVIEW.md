@@ -132,13 +132,13 @@
 | 项 | 内容 |
 | --- | --- |
 | 评审对象 | `acf7d39`（短哈希，分支 `main`，即第一轮 P0-1 的修复提交） |
-| 对象漂移（必须记） | 评审**开始时**工作树干净（`git status --short` 0 行，HEAD=`acf7d39`）；评审**中途**出现 20 项未提交改动（`app.js`、`index.html`、`PROTOTYPE-REVIEW.md`、17 张截图），随后被提交为 **`d6c782d`**，评审结束时 HEAD=`d6c782d`、工作树 0 行。本报告的**实测数字跑在 `d6c782d` 的树内容上**；两提交的非图片差异只有版本徽章渲染（`git diff acf7d39..d6c782d -- prototypes/`：app.js +9/−1、index.html +2/−2），不影响任何断言结果。凡「acf7d39 与 d6c782d 有差别」的地方，下文逐条标出 |
+| 对象漂移（必须记） | 评审**开始时**工作树干净（`git status --short` 0 行，HEAD=`acf7d39`）；评审**中途**出现 20 项未提交改动（`app.js`、`index.html`、`PROTOTYPE-REVIEW.md`、17 张截图），随后被提交为 **`d6c782d`**；评审结束前又出现 **`d8bfe28`**（自测阈值 `≥3` 改 `===4` + 把本文件当时未写完的第二轮章节 147 行一并提交）。评审结束时 HEAD=`d8bfe28`、工作树只剩本文件的收尾修订。本报告的**实测数字跑在 `d6c782d`–`d8bfe28` 的树内容上**；`acf7d39→d6c782d` 的代码差异只有版本徽章渲染（`git diff acf7d39..d6c782d -- prototypes/`：app.js +8/−1、index.html +2/−2），`d6c782d→d8bfe28` 只改自测阈值与文档，均不改变任何断言结果。凡「`acf7d39` 与后两提交有差别」的地方，下文逐条标出 |
 | 评审人 | 独立子代理（第二轮；不参与构建，不共享主线上下文） |
 | 模型标识 / 推理档位 | `custom-local:deepseek-4.1-flash` / 档位**未获取**（运行环境未暴露该参数） |
 | 日期 | 2026-10-26（`date +%F`） |
 | 运行环境 | macOS arm64 · Node v22.22.2 · Chrome 145 · `puppeteer-core` 经 `scripts/lib/load-puppeteer.mjs` 候选③（`homedir()/.workbuddy/binaries/node/workspace`）解析 |
 | 输入范围 | 第一轮本文件 §四（14 行）；`docs/CORE-MODULES.md`（新增）；`docs/PROTOTYPE-REVIEW.md`；`prototypes/v0.2/app.js`（`PAGES`/`TABS`、`stageEmptyLabel()`、`scanJudge()`）；`scripts/probe-interaction.mjs`（X3i、X3j–X3p、自测阈值）；四条探针 + `check-conformance` 的实跑输出；`git show <commit>:<file>` 与 `shasum -a 256` |
-| 本轮只改 | 本文件（在文末追加本章；第一轮内容未删改。反向对照的临时改动已还原，见 §9） |
+| 本轮只改 | 本文件（在文末追加本章；第一轮内容未删改。反向对照的临时改动已还原，见 §九） |
 
 ## 八、复跑核对（自报 vs 实测）
 
@@ -147,14 +147,14 @@
 | # | 命令 | 构建方自报 | 实测末行 | 一致？ |
 | --- | --- | --- | --- | --- |
 | 1 | `probe-interaction.mjs` | `PASS 102/102`（`HVT-X-WALKTHROUGH.md:32`、`README.md:8`、`DEV-PLAN.md:15`） | `PASS  102/102` | 一致 |
-| 2 | `probe-interaction.mjs --self-test` | `FAIL 89/102` + 「命中 4/4：A-09、X3a、X4-03、X3i」（`HVT-X-WALKTHROUGH.md:33`） | `FAIL  89/102`；追加行 `自测：注入 4 个缺陷…命中 4/4 条 FAIL：A-09、X3a、X4-03、X3i` | 一致（89/102 与 4/4 两个数字都对得上） |
+| 2 | `probe-interaction.mjs --self-test` | `FAIL 89/102` + 「4/4 全部被抓到：A-09、X3a、X4-03、X3i」（`HVT-X-WALKTHROUGH.md:33`，措辞随 `d8bfe28` 更新） | `FAIL  89/102`；追加行 `自测：注入 4 个缺陷…4/4 全部被抓到：A-09、X3a、X4-03、X3i`（`acf7d39`/`d6c782d` 上是旧措辞「命中 4/4 条 FAIL」，`d8bfe28` 收紧阈值后改了这句） | 一致（89/102 与 4/4 两个数字都对得上） |
 | 3 | `probe-page-view.mjs` | `13/13`（`DEV-PLAN.md:15`、`FULL-PAGE-VIEW.md:96`） | `PASS  13/13` | 一致 |
 | 4 | `probe-prototype.mjs` | `28/28`（`DEV-PLAN.md:15`） | `PASS  28/28` | 一致 |
 | 5 | `probe-disease-primer.mjs` | `9/9`（`DEV-PLAN.md:15`、`DISEASE-PRIMER.md:11`） | `9/9 通过` | 一致 |
 | 6 | `npm run check` | 未自报数字（只写「静态契约」口径） | `"staticPass": true`、`"errors": []`、1 条 warning（peer 范围 / API 签名 / 凭据 / tgz 内容 / Desktop UI 需另行验证） | 无对照；该脚本**不含探针**，不能当「全绿」 |
 | 7 | `check-conformance.mjs .` | `22/30`（`PROTOTYPE-REVIEW.md:34`） | `22/30 通过 · 8 失败 · 0 待人工` | 一致；8 项失败仍全部落在 M6 范围（`lib/version.js`、`lib/layout.js`、三条检查链、`test/*.test.mjs`） |
 
-**核对结论**：构建方自报的 6 个数字（102/102、89/102、4/4、13/13、28/28、9/9）与实测**逐条一致**，本轮未发现数字造假。但「自测 4/4」的通过阈值有水分，见 §11 N3。
+**核对结论**：构建方自报的 6 个数字（102/102、89/102、4/4、13/13、28/28、9/9）与实测**逐条一致**，本轮未发现数字造假。但「自测 4/4」在 `acf7d39` 上的通过阈值是 `≥3`（注 4 条允许漏 1 条），本轮指出的这个问题在评审期间被 `d8bfe28` 修掉，见 §十一 N3。
 
 ## 九、P0-1 复评专章
 
@@ -200,7 +200,7 @@ FAIL  100/102
 | --- | --- | --- | --- | --- |
 | P0-1 | P0 | 档案 B 把「复发不可切除」当产品标题上屏 | **已消除** | 见 §九；正向 DOM h1 为叙述句，反向注入 `X3i` FAIL / 100/102 |
 | P1-1 | P1 | 交互文档记的 HEAD 过时（`20c46e1`） | **已修** | `docs/INTERACTION-DESIGN.md:10` 改为「写成时的基线 `20c46e1`；当前评审对象 `055a8f4`」，`:14` 补充说明版本 0.2.1 落在此后修复提交。遗留：仍未写出 `acf7d39`（属记录滞后，不重复计缺陷） |
-| P1-2 | P1 | 走查记录对象 HEAD 过时（`18356b6`） | **已修（弱）** | `docs/HVT-X-WALKTHROUGH.md:3` 改为「首次走查 HEAD `18356b6`；P0 修复后复跑落在 `v0.2.1`」，不再把 `18356b6` 当复核对象。弱在：复跑对象只有版本号、没有提交哈希，而 `v0.2.1` 横跨 `acf7d39`/`d6c782d` 两个提交（并入 §11 N2） |
+| P1-2 | P1 | 走查记录对象 HEAD 过时（`18356b6`） | **已修（弱）** | `docs/HVT-X-WALKTHROUGH.md:3` 改为「首次走查 HEAD `18356b6`；P0 修复后复跑落在 `v0.2.1`」，不再把 `18356b6` 当复核对象。弱在：复跑对象只有版本号、没有提交哈希，而 `v0.2.1` 横跨 `acf7d39`/`d6c782d` 两个提交（并入 §十一 N2） |
 | P1-3 | P1 | 原型现状表与结论自相矛盾 | **已修** | `docs/INTERACTION-DESIGN.md:144-158` 改为「现在 / 本轮前」两列，6 个写入口收进「⋯ 更多」、主表单 6 字段、TESS 上肢 29 题均已按现实现重写；由 `X3a/X3b/X3c/X3d/X3p` 与 102/102 背书 |
 | P1-4 | P1 | 浏览器标题仍写 v0.2.0 | **acf7d39：部分修 → d6c782d：已修** | `git show acf7d39:prototypes/v0.2/index.html` 仍有两处 `v0.2.0`（:152 顶栏徽章、:156 原型条），只有 `:6` 标题改成 v0.2.1；`d6c782d` 把两处改为 v0.2.1 并由 `APP_INFO` 渲染覆盖（`app.js:1184-1190`）。当前工作树 `grep -rn "v0\.2\.0" prototypes/ docs/*.md README.md` 为 0 命中 |
 | P1-5 | P1 | README 仍写「接入骨架，尚未实现真实业务」 | **已修** | `README.md:5-10` 改为「设计包 / HTML 原型（v0.2.1）/ M6–M8 未做」三块分述，并写明「G1 尚未签认」 |
@@ -210,7 +210,7 @@ FAIL  100/102
 | P2-3 | P2 | 探针硬编码本机绝对路径 | **部分修** | 四条探针 + `shoot-pages.mjs` 均改为 `scripts/lib/load-puppeteer.mjs`（候选：`PUPPETEER_PATH` → 仓库 `node_modules` → `homedir()` 家族 workspace → 常规解析；全失败 `exit(2)`）；本机四条探针全部跑通，证明候选链有效。**残留 1 处**：`scripts/fetch-sarcoma-trials-2026.mjs:34` 仍有 `/Users/qinxiaoqiang/Downloads/unified_search_trials`（有 `UNIFIED_TRIAL_MCP_ROOT` 可覆盖）。故 `grep -rn "Users/qinxiaoqiang" scripts/` = **1**，不是 0 |
 | P2-4 | P2 | 探针缺癌种专属断言 | **已修** | `scripts/probe-interaction.mjs:697-760` 新增 X3j（腹膜后→未定义分期组）、X3k（有分期→不出现未定义）、X3l（切缘无「切干净」）、X3m（功能页无 MSTS）、X3n（药名带获批未核实）、X3o（×ULN 徽章）、X3p（TESS 30→29 + `aria-pressed`）；B-06 另断言不显示总分。全部 PASS |
 | P2-5 | P2 | 私密内容三出口契约未承接 | **已修（按第一轮给的第二选项）** | `docs/SPEC.md:99-120` 新增专节，逐条列「要求 / 现状 / 缺口 / 处理方式（M6 做 life/2 时必须落 schema + 三出口过滤 + 单测）」；`docs/DEV-REQUIREMENTS-2026-10-25.md:95-97` 明列「本轮全未做」。没有假称已实现 |
-| P2-6 | P2 | `docs/CORE-MODULES.md` 缺件，四模块只能由评审推定 | **部分修** | 文件已补（10.8 KB，见 §12.1）；但两处不成立：①判据应用不自洽（「治疗线序」按同一把尺子也该降级）；②§七「四模块各有独立一级页 + 写入口或整页视图（成立）」对 `tumor` **不成立**——`sed -n '445,512p' app.js` 无 `data-pv`、无 `writeEntry`，全站 `data-pv` 取值只有 cadence/chart/intake/margin/surgery/tess/timeline/trial/wound，没有病理整页。详见 §12.2 |
+| P2-6 | P2 | `docs/CORE-MODULES.md` 缺件，四模块只能由评审推定 | **部分修** | 文件已补（10.8 KB，见 §十二.1）；但两处不成立：①判据应用不自洽（「治疗线序」按同一把尺子也该降级）；②§七「四模块各有独立一级页 + 写入口或整页视图（成立）」对 `tumor` **不成立**——`sed -n '445,512p' app.js` 无 `data-pv`、无 `writeEntry`，全站 `data-pv` 取值只有 cadence/chart/intake/margin/surgery/tess/timeline/trial/wound，没有病理整页。详见 §十二.2 |
 | P2-7 | P2 | 来源版本选择无理由 | **已修** | `docs/DIFF-MATRIX.md:11-22` 新增「版本选取理由」表：逐条写「锁定版本 / 已知更新（V5.2026、TNM 9 生效）/ 为什么仍锁 / 什么时候必须换」，并把「为什么仍锁」明确定性为「本项目的取舍理由」而非事实 |
 
 小计：P0 = 0；P1 已修 4、部分修 2（P1-4 在 `acf7d39` 上部分修、`d6c782d` 补齐；P1-6 仍部分修）；P2 已修 5、部分修 2（P2-3、P2-6）。
@@ -220,8 +220,8 @@ FAIL  100/102
 | 编号 | 级别 | 问题 | 依据 | 建议 |
 | --- | --- | --- | --- | --- |
 | N1 | **P1** | 看板「档案位置」卡的分期行自相矛盾（= P1-6 的残口，用户第一屏可见） | DOM 实测档案 B：`分期 / 本档案没有分期记录行，界面显示「未回报」/ 该部位未定义分期组`；源码 `app.js:439` 说明文字写死 | 把 `:439` 的 `'本档案没有分期记录行，界面显示「未回报」'` 改成按 `stageEmptyLabel(p)` 分支（或直接删掉「界面显示」四字）；`X3j` 增加一条看板断言 |
-| N2 | **P1** | 签认记录的对象与实际产物错位：`PROTOTYPE-REVIEW.md` 写「提交 `acf7d39`」，但同一表里「顶栏徽章与页脚由 `APP_INFO` 渲染时覆盖，已无写死副本」只在 `d6c782d` 成立；表内 4 个 SHA-256 中 `index.html`/`app.js` 两个是 `acf7d39` 的旧值 | `docs/PROTOTYPE-REVIEW.md:11-13`；实测当前 `index.html` = `3afd6ccd…f650b`、`app.js` = `0ecd88c3…f88e`，而文档记 `1361052a…`、`5dde457e…`（与 `git show acf7d39:` 的哈希一致）；`git diff acf7d39..d6c782d` 两文件均有改动 | G1 签认前把「提交」改为 `d6c782d` 并重算 4 个 SHA-256；`HVT-X-WALKTHROUGH.md:3` 同样把「v0.2.1」补成提交哈希 |
-| N3 | P2 | 自测通过阈值仍是「≥3/4」，第 4 个注入缺陷（正是 P0-1 闸门 X3i）漏检时 `--self-test` 仍会 PASS 并 `exit 0` | `scripts/probe-interaction.mjs:903`：`const enough = hit.length >= 3` | 改为 `hit.length === injected.length`（4/4 全中才过）。否则「闸门失效」这件事本身无法被自测发现——第一轮就是这么漏的 |
+| N2 | **P1** | 签认记录的对象与实际产物错位：`PROTOTYPE-REVIEW.md` 写「提交 `acf7d39`」，但同一表里「顶栏徽章与页脚由 `APP_INFO` 渲染时覆盖，已无写死副本」只在 `d6c782d` 成立；表内 4 个 SHA-256 中 `index.html`/`app.js` 两个是 `acf7d39` 的旧值 | `docs/PROTOTYPE-REVIEW.md:11-13`；实测当前 `index.html` = `3afd6ccd…d13f650b`、`app.js` = `0ecd88c3…f88e`，而文档记 `1361052a…`、`5dde457e…`（与 `git show acf7d39:` 的哈希一致）；`git diff acf7d39..d6c782d` 两文件均有改动 | G1 签认前把「提交」改为原型文件所在的 `d6c782d`（当前 HEAD `d8bfe28` 只改探针与文档，不动 `prototypes/`）并重算 4 个 SHA-256；`HVT-X-WALKTHROUGH.md:3` 同样把「v0.2.1」补成提交哈希 |
+| N3 | P2 | 自测通过阈值是「≥3/4」，第 4 个注入缺陷（正是 P0-1 闸门 X3i）漏检时 `--self-test` 仍会 PASS 并 `exit 0` | `acf7d39` 的 `scripts/probe-interaction.mjs:903`：`const enough = hit.length >= 3`。**已于评审期间由 `d8bfe28` 修为 `miss.length === 0`**（`git diff d6c782d..d8bfe28 -- scripts/probe-interaction.mjs`），复跑输出「4/4 全部被抓到」 | 已修，保留记录以免下一版回退；这条与第一轮「闸门是死的」是同一个失效模式 |
 | N4 | P2 | 硬编码本机路径残留 1 处（P2-3 未清零） | `scripts/fetch-sarcoma-trials-2026.mjs:34`；`grep -rn "Users/qinxiaoqiang" scripts/` = 1 命中（有 `UNIFIED_TRIAL_MCP_ROOT` 覆盖） | 去掉默认绝对值，改为「未设置环境变量则报错退出」，或落到 `research/` 相对路径 |
 | N5 | P2 | 场景文档与实现的徽章文案不一致 | `docs/SCENARIOS.md:48` 写徽章为「需参考上限」；实现是「上限未提供 · ×ULN 不计算」（`app.js:117/184/637`），`X3o` 断言后者 | 改 `SCENARIOS.md:48` 一处文案（或反过来改实现，但探针与页面注释都以后者为准） |
 | N6 | P2 | `CORE-MODULES.md` §七的「四模块各有写入口或整页视图（成立）」与实现不符 | 同 P2-6 依据：`tumor` 无 `data-pv`、无 `writeEntry`，`INTERACTION-DESIGN.md:157` 自己也写「无手工新增入口」 | 把该句改为「核心一为只读记录 + 『改这一条』更正，其余三个模块有整页视图/写入口」；或给病理页补一个整页视图 |
@@ -260,12 +260,12 @@ FAIL  100/102
 | --- | --- | --- |
 | P0 | **0** | P0-1 正向 + 反向双向验证，已消除 |
 | P1 | 2 | N1 看板分期行自相矛盾（P1-6 残口）；N2 签认记录的对象与 SHA 错位 |
-| P2 | 4 | N3 自测阈值 ≥3/4；N4 硬编码路径残留；N5 徽章文案；N6 CORE-MODULES §七 过度声明 |
+| P2 | 3 | N4 硬编码路径残留；N5 徽章文案；N6 CORE-MODULES §七 过度声明（N3 已在评审期间由 `d8bfe28` 修掉） |
 
 **G1 能否交签认：不能。**
 
-理由只有一条，而且是可复核的：**P1-6 没有修完**。看板是用户打开就看的第一屏，档案 B 的「档案位置」卡同一行里左边写「本档案没有分期记录行，界面显示『未回报』」、右边写「该部位未定义分期组」——这正是 P1-6 要消灭的那个误读（腹膜后患者以为报告还没出）。`X3j` 只测了「我的肿瘤 › 分期与分级」，所以 102/102 全绿也没照到它。修法是一行模板 + 一条看板断言，规模与 P0-1 同级。
+理由有两条，都可复核：**P1-6 没有修完**。看板是用户打开就看的第一屏，档案 B 的「档案位置」卡同一行里左边写「本档案没有分期记录行，界面显示『未回报』」、右边写「该部位未定义分期组」——这正是 P1-6 要消灭的那个误读（腹膜后患者以为报告还没出）。`X3j` 只测了「我的肿瘤 › 分期与分级」，所以 102/102 全绿也没照到它。修法是一行模板 + 一条看板断言，规模与 P0-1 同级。
 
 再加 N2：`PROTOTYPE-REVIEW.md` 是这次要签的那张表，表里写的提交（`acf7d39`）和哈希（两个旧值）与现在要签的产物不一致。签认记录对不上产物，本身就不能签。
 
-除此之外本轮没有发现新的 P0，也没有发现数字造假：6 个自报数字逐条复跑一致；P0-1 的闸门不是死的（反向注入立刻 FAIL）；P2 七条里五条清干净，剩两条是范围没收尽（`fetch` 脚本、`CORE-MODULES` 的过度声明）。
+除此之外本轮没有发现新的 P0，也没有发现数字造假：6 个自报数字逐条复跑一致；P0-1 的闸门不是死的（反向注入立刻 FAIL）；P2 七条里五条清干净，剩两条是范围没收尽（`fetch` 脚本、`CORE-MODULES` 的过度声明）；评审中我提的自测阈值问题（N3）已在 `d8bfe28` 收紧为「注 4 必须抓 4」。
