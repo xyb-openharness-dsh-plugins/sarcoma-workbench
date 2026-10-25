@@ -1,5 +1,5 @@
 'use strict';
-/* 小韧宝 SarcPal v0.2.0 · 软组织肉瘤患者工作台交互原型
+/* 小韧宝 SarcPal v0.2.1 · 软组织肉瘤患者工作台交互原型
    全部患者数据为模拟（demo/build-demo-data.mjs 生成）；不读写真实文件、不调用模型或宿主 API。
    三层信息边界：
      ①事实：值 / 日期 / 谁说的 / 报告原文 —— 可写；
@@ -1181,6 +1181,13 @@ function render() {
   if (!main) return;
   main.innerHTML = `<div class="page-enter">${(VIEWS[state.view] || vDashboard)()}</div>`;
   document.title = `小韧宝 SarcPal · ${PAGES.find((p) => p[0] === state.view)[1]} · v${APP_INFO.version}`;
+  /* 版本号单一来源：顶栏徽章与页脚的静态文本也由 APP_INFO 覆盖一次。
+     修 P1-4 时发现 index.html 里还写死两处 v0.2.0——写死的版本号迟早会漂，
+     这里改成渲染时覆盖，改版本只需要动 APP_INFO + VERSION + package.json 三处。 */
+  const chip = document.getElementById('ver-chip');
+  if (chip) chip.textContent = `v${APP_INFO.version}`;
+  const pv = document.getElementById('proto-ver');
+  if (pv) pv.textContent = `v${APP_INFO.version}`;
   renderNav();
   renderProfileChip();
   renderAgent();
