@@ -5,7 +5,7 @@
 > **它是干什么的**：把散在病历、病理报告、影像报告、化疗单里的信息，整理成患者自己能看懂、复诊时能摊开讲的形状。
 > **它不是什么**：不判读影像、不判读病理、不算分期分级、不给治疗建议、不给预后。详见 [SPEC §13 患者视角红线 K1–K6](docs/SPEC.md)。
 
-- 状态：**原型阶段（M2 完成，G2 待确认）**。开发版尚未开始，装机与发布未做。
+- 状态：**原型阶段（M2 完成：独立评审 6 条 P0 已全修并复验 → P0 = 0，G2 待签认）**。开发版尚未开始，装机与发布未做。
 - 演示数据**全部虚构**；`in_use=1` 标记，导出默认排除。
 - **0 访谈 + 0 临床核对**：所有患者场景是假设句式（`HYPOTHESIS`），不是一手引语。见 [USER-RESEARCH](docs/USER-RESEARCH.md)。
 
@@ -60,7 +60,7 @@ open prototypes/v0.2/index.html
 ```bash
 npm install
 npm run check          # 装包合同：语法 + 宿主注册契约
-npm run test           # 单测（数据/过滤/图表几何）
+npm run test           # 单测：25 条（含 9 条直接加载 prototypes/v0.2/exits.js 源码的 K5 出口测试）
 python3 scripts/verify-prototype.py    # 原型走查：11/32 页签、禁词、三档宽度、折叠卡五块
 python3 scripts/shoot-screenshots.py   # 重出 README 截图
 npm run audit          # 家族一致性（交付前必须清零）
@@ -74,6 +74,8 @@ npm run audit          # 家族一致性（交付前必须清零）
 | --- | --- |
 | DSH 工作台注册 + 健康接口 + `config.root` 真实建目录 | ✅ 实测（`npm run check` staticPass） |
 | `prototypes/v0.2/` 交互原型（11 一级 / 32 二级） | ✅ 实测（走查脚本，见下表数字） |
+| 三出口过滤（导出 / AI / 一页纸） | ✅ `exits.js` 单点实现，产品与测试加载同一份源码；变异测试验证过断言会红 |
+| 独立评审 | ✅ P0 = 0（首轮 6 条，逐条修复见 [P0-FIX-TRAIL](docs/P0-FIX-TRAIL.md)） |
 | 演示数据唯一源 `demo/build-demo-data.mjs`（双档案 × 虚构） | ✅ 实测（public 与 prototype 同源生成） |
 | 数据层 / SQLite / API | ⏳ 未实现（M3） |
 | 真实解析（MinerU）、试验在线通道 | ⏳ 未实现（M4/M5） |
@@ -87,6 +89,8 @@ npm run audit          # 家族一致性（交付前必须清零）
 折叠卡：默认展开 0 ✓  展开后 5 块顺序固定 ✓  @media print 规则在
 禁词命中 0 ✓   垃圾值 0 ✓   控制台错误 0 ✓   失败请求 0 ✓
 三档宽度（1440/1080/860）溢出 0 ✓   页脚贴底 ✓   [hidden] 生效 ✓
+
+npm test → 25 pass / 0 fail
 ```
 
 ## 文档地图
@@ -96,6 +100,8 @@ npm run audit          # 家族一致性（交付前必须清零）
 | [SPEC](docs/SPEC.md) | 项目规格 + §13 K1–K6 患者视角红线 |
 | [DEV-REQUIREMENTS](docs/DEV-REQUIREMENTS-2026-10-25.md) | 强约束 H1–H14 + 可回退默认值 D1–D10 |
 | [DIFF-MATRIX](docs/DIFF-MATRIX.md) | 差异化实测（重名率/6 条断言/3 个最近邻区分） |
+| [PROTOTYPE-INDEPENDENT-REVIEW](docs/PROTOTYPE-INDEPENDENT-REVIEW.md) | 独立评审报告（P0 = 6 / P1 = 19 / P2 = 9，含逐条证据） |
+| [P0-FIX-TRAIL](docs/P0-FIX-TRAIL.md) | 6 条 P0 的修法与复验输出；P1/P2 的"已修 / 不修及理由" |
 | [PATIENT-FLOW](docs/PATIENT-FLOW.md) | 患者旅程 P0–P10（假设模型） |
 | [SCENARIOS](docs/SCENARIOS.md) | 16 条场景（患者原话/页面接住/明确不做什么） |
 | [USER-RESEARCH](docs/USER-RESEARCH.md) | 证据分层（E0 = 0 访谈）、H1–H6、访谈提纲 |

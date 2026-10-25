@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- |
 | **M0 骨架** | 认领（issue #32 `claimed`）+ private 仓 + init（168 文件）+ cordis `config.root` + 文档 9 件 | `npm run check` 的 `staticPass=true`；9 件文档原创 | ✅ 实测（check 绿 + 已 push e584ea1） | `check` 输出见 §3 |
 | **M1 调研SPEC** | 三路调研（医学 10 主题 / NMPA / 家族对比）+ DIFF-MATRIX 实测 + SPEC + USER-RESEARCH + INTERACTION-DESIGN 全量 | 一级重名率实测 ≤70%；K1–K6 落文档 | 🔧 三路调研完成、文档全量，**G1 待签认** | `DIFF-MATRIX.md` §1 · `research/medical/`（510 行 36 条）· `research/regulatory/NMPA-VERIFICATION.md` |
-| **M2 原型** | demo 构建器（双档案 × 6 月唯一源）+ prototypes/v0.2 四件套 + 折叠卡 + HVT X1–X4 + 独立评审 + README ≥4 截图 | 页签走查数字；computed fill=none；窄宽 0 问题；禁词 0 | 🔧 原型与走查完成（X1–X4 全 1、禁词 0、溢出 0、折叠卡 4/4），**待独立评审 P0=0 后进 G2** | `docs/validation-prototype-v0.2.json` · `docs/HVT-PROTOTYPE-WALKTHROUGH.md` |
+| **M2 原型** | demo 构建器（双档案 × 6 月唯一源）+ prototypes/v0.2 四件套 + 折叠卡 + HVT X1–X4 + 独立评审 + README ≥4 截图 | 页签走查数字；computed fill=none；窄宽 0 问题；禁词 0；**独立评审 P0 = 0** | 🔧 独立评审出 6 条 P0 → 全部修复并复验 → **P0 = 0**；待 G2 用户签认 | `docs/PROTOTYPE-INDEPENDENT-REVIEW.md` · `docs/P0-FIX-TRAIL.md` |
 | **M3 数据模型** | schema/0001 + freeze-contract(sha256) + 判读列断言 | 内存全建；无 diagnosis/risk_level 类列 | ⏳ | — |
 | **M4 临床库** | fetch-sarcoma-trials 脚本（四通道）+ research 四件套 | manifest=jsonl=sqlite；FAILED 如实 | ⏳ | — |
 | **M5 开发版** | 七步移植 + MinerU 六部件 + apiBase 契约 + test 五套 | 版本同源；单测全过；tgz 占位=0 | ⏳ | — |
@@ -149,3 +149,26 @@ $ npm run check
 | 键盘 Tab 序全量走查 | ⏳ |
 | 大字模式（17px）三档宽度复跑 | ⏳ |
 | 真机 DSH Desktop 内嵌渲染 | ⏳ 待 M6 |
+
+## 11. M2 独立评审与修复轮（2026-10-25）
+
+**评审**：独立评审员（非开发者）写 `docs/PROTOTYPE-INDEPENDENT-REVIEW.md`（521 行）。
+结论 **不通过：P0 = 6 / P1 = 19 / P2 = 9**。K1、K3、K4 通过（K4 经三轮穷举"刻意去找但确实找不到"），K2、K5、K6 不通过。
+
+**为什么这轮评审有价值**：评审抓出的 6 条 P0 里，有 3 条是自评阶段"显示通过"的项——
+- 自评"三出口共用过滤函数 + 单测"→ 实际测试文件里自己重写了一份 `visible()` 在测自己（P1-18）
+- 自评"禁词 0 命中"→ 禁词表只扫演示数据不扫模板文案，漏掉"应接受康复评估"整类指令词（P0-4）
+- 自评"无空页"→ 判据是"有文字"，115 字的零业务内容页也算通过（P1-11）
+
+**修复**：见 `docs/P0-FIX-TRAIL.md`。6 条 P0 全部修复并逐条复验；13 条 P1 + 4 条 P2 已修；6 条如实标注不修/未修及理由（P1-12 药物获批字段是真缺口，凭空写"核于 X"就是伪造核实记录，留到 M4）。
+
+**根因级修复**：三出口过滤抽到 `prototypes/v0.2/exits.js`，`app.js` 与 `test/exits.test.mjs` 用 vm 加载**同一份源码**；新增两条元断言：app.js 不得重新定义过滤函数、禁词扫描必须覆盖模板文案。禁词扫描做过**变异测试**（塞回"应接受康复评估"→ 测试变红 # fail 1；还原 → 25 pass），证明它不是又一个自欺的测试。
+
+**复验**：
+
+| 项 | 结果 |
+| --- | --- |
+| P0 复验 | 6/6 通过（每条独立复现路径，见 P0-FIX-TRAIL §1–§6） |
+| `npm test` | 25 pass / 0 fail（原 14 pass，其中 1 条是自欺，已删并换成 9 条跑产品源码的） |
+| `verify-prototype.py` | ok=true；0 空页 / 0 禁词 / 0 溢出 / 0 异常 |
+| `npm run check` | staticPass: true, errors: [] |
