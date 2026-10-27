@@ -5,7 +5,7 @@
 **当前状态分三块，不要混读**：
 
 - **设计包（已交付）**：需求 [BRIEF](docs/BRIEF.md)、规格 [SPEC](docs/SPEC.md)、分期与分期组口径 [DIFF-MATRIX](docs/DIFF-MATRIX.md)、临床数据覆盖 [CLINICAL-DATA-2026](docs/CLINICAL-DATA-2026.md)、交互路径 [INTERACTION-DESIGN](docs/INTERACTION-DESIGN.md) 与 [28-INTERACTION-PATH-DESIGN](docs/28-INTERACTION-PATH-DESIGN.md)、独立评审 [DESIGN-REVIEW](docs/DESIGN-REVIEW.md)。
-- **HTML 原型（已交付，`prototypes/v0.2/`，v0.2.1）**：12 个一级页 + 整页视图 + 两套演示档案（A 肢体/原发、B 腹膜后/复发），`file://` 双击即开。交互红线 HVT X1–X4 走查 **103/103**（`node scripts/probe-interaction.mjs`，自测 4/4 命中），原型四必查件 65/65（含 768 宽 36 个页签逐条断言），疾病概要 9/9。
+- **HTML 原型（已交付，`prototypes/v0.2/`，v0.2.2）**：12 个一级页 + 整页视图 + 两套演示档案（A 肢体/原发、B 腹膜后/复发），`file://` 双击即开。交互红线 HVT X1–X4 走查 **103/103**（`node scripts/probe-interaction.mjs`，自测 4/4 命中），原型四必查件 65/65（含 768 宽 36 个页签逐条断言），疾病概要 10/10（P1–P9 + E0）。
 - **M6–M8（未做）**：真实业务库、装机包、push 与家族回流都还没开始。仓库里没有 `schema/` 落地表、没有 `.tgz` 产物、多数远端为空。**G1 尚未签认**——原型是待评审材料，不是已确认版本。
 
 初始化后先将 [项目设计提示词](docs/DESIGN-PROMPT.md) 交给当前Agent；它应展示实际路径并以已有用户/场景/流程素材对齐设计者、研究与取舍原则。癌种项目另有 [完整专用提示词](prompts/NEW-CANCER-WORKBENCH.md)。先读 [AGENTS](AGENTS.md)。
@@ -14,7 +14,7 @@
 
 > 四段固定：定义 → 医学资料规范和指南情况 → 目前治疗全景概要 → 发展趋势。整体属**解释层**（第 ② 层）：
 > 只整理公开信息，不判断你的病情。用工看板右上角的「?」看同一份内容的整页版。
-> 原件状态照实写：本项目对 NCCN / AJCC / WHO / CSCO 都只拿到公开页与版本号，**未取得原件**，页码一律待核。
+> 原件状态照实写：本项目对 NCCN / AJCC / WHO / CSCO 都没有取得指南原件；可点的只有官方入口页与二次来源页（见下表逐行），页码一律待核。NCCN 患者版 PDF 可免费下载，但 PDF 直链在无头浏览器中正文为空（THIN），因此入口记官方详情页，不写「已取得」。
 
 ### 定义
 
@@ -28,10 +28,11 @@ WHO《软组织与骨肿瘤分类》第 5 版（2020）按分化方向分类：�
 
 | 机构 | 文件 | 版本 / 年份 | 原件 | 本台的用途 |
 |---|---|---|---|---|
-| NCCN | NCCN Guidelines · Soft Tissue Sarcoma | V3.2026（2026-03-12 生效） | 未取得原件 | 分期检查、治疗路径与随访节奏的并列引用（机构 + 版本 + 表号） |
-| AJCC | Cancer Staging Manual, 8th ed.（STS 章节） | 2017 | 未取得原件 | TNM 与组织学分级如何进入分期组；哪些部位未定义分期组 |
-| WHO | Soft Tissue and Bone Tumours, 5th ed. | 2020 | 未取得原件 | 病理亚型命名的唯一口径 |
-| CSCO | 骨与软组织肿瘤诊疗指南 | 2025 版 | 未取得原件 | 国内可及药物与本土实践差异，本版暂不作引用依据 |
+| NCCN | NCCN Guidelines for Patients · Soft Tissue Sarcoma | 2025（据临床版 V1.2025 改编，66 页） | [官方入口页 · 患者版（免费）](https://www.nccn.org/patientresources/patient-resources/guidelines-for-patients/guidelines-for-patients-details?patientGuidelineId=37) | 分期检查、治疗路径与随访节奏的患者版并列引用 |
+| NCCN | NCCN Guidelines · Soft Tissue Sarcoma（临床版） | V5.2026（官网现行；本台正文引用仍为 V3.2026） | [官方入口页 · 临床版（需注册）](https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1464) | 分期检查、治疗路径与随访节奏的并列引用（机构 + 版本 + 表号） |
+| AJCC | Cancer Staging Manual, 8th ed.（STS 章节） | 2017 | [官方入口页 · 分期体系（手册付费）](https://www.facs.org/quality-programs/cancer-programs/american-joint-committee-on-cancer/cancer-staging-systems/) | TNM 与组织学分级如何进入分期组；哪些部位未定义分期组 |
+| WHO | Soft Tissue and Bone Tumours, 5th ed. | 2020 | [官方入口页 · IARC 出版页（全书付费）](https://publications.iarc.fr/Book-And-Report-Series/Who-Classification-Of-Tumours/Soft-Tissue-And-Bone-Tumours-2020) | 病理亚型命名的唯一口径 |
+| CSCO | 骨与软组织肿瘤诊疗指南 | 2025 版 | 未取得原件 · 无官方免费全文（CSCO 指南以纸质/合订本发行，官网未提供公开 PDF） | 国内可及药物与本土实践差异，本版暂不作引用依据 |
 
 指南给的是「通常怎么做」，不是「你该怎么做」。本台对未取得原件的文件只记「存在」与「大致讲什么」，不引用其具体条文。国内分期与 AJCC 在此病种不做换算；两套并存时两行并列，各自标注出处。
 
@@ -47,7 +48,7 @@ WHO《软组织与骨肿瘤分类》第 5 版（2020）按分化方向分类：�
 
 以上是文献与指南里列出的手段，按病期与线序排列，**不代表任何一项适合你**。选哪一个，这一句需要问你的医生。
 
-**来源**：NCCN · NCCN Guidelines · Soft Tissue Sarcoma（V3.2026）· 未取得原件，据二次来源 · 页码待核
+**来源**：NCCN · NCCN Guidelines · Soft Tissue Sarcoma（V5.2026）· 官方入口页（临床版需注册）· 页码待核
 
 ### 发展趋势
 
@@ -55,10 +56,11 @@ WHO《软组织与骨肿瘤分类》第 5 版（2020）按分化方向分类：�
 
 - 2013 年：WHO 第 4 版《软组织与骨肿瘤分类》出版。
 - 2020 年：WHO 第 5 版出版，取代第 4 版；软组织与骨肿瘤合并为一卷，部分亚型被重命名或重新归类。
-- 2026-03-12：NCCN 软组织肉瘤指南由 V2.2026 更新为 V3.2026 并生效。
+- 2025-05-02：NCCN 软组织肉瘤临床指南 V1.2025 生效；患者版《Soft Tissue Sarcoma, 2025》即据此版改编（66 页）。
+- 截至 2026-10-27：NCCN 官网 Soft Tissue Sarcoma 指南条目显示版本为 V5.2026（临床版全文需注册）；本台正文引用仍锁 V3.2026，换版需逐条复核（见 docs/DIFF-MATRIX.md）。
 - 截至 2026-10：中国药物临床试验登记与信息公示平台可检索到软组织肉瘤相关登记 60 条，其中 I 期与 II 期占多数；另有 150 条按病种排除（骨肉瘤、尤文、软骨肉瘤、GIST、硬纤维瘤、脊索瘤、卡波西等）。数字随检索日期变化，检索式与日期一并记录在 `research/sarcoma/manifest.json`。
 
-**来源**：WHO（2020）· 未取得原件，据二次来源 · 页码待核 ｜ NCCN V3.2026 · 未取得原件 · 更新记录页页码待核 ｜ NMPA 药品审评中心 · 药物临床试验登记与信息公示平台（检索日 2026-10）· 一手登记数据，本项目自采
+**来源**：WHO（2020）· 未取得原件，据二次来源 · 页码待核 ｜ NCCN V5.2026 · 官方入口页（临床版需注册）· 页码待核 ｜ NMPA 药品审评中心 · 药物临床试验登记与信息公示平台（检索日 2026-10）· 平台检索页无法脚本验活，60 条为项目自采快照
 
 ## 开发顺序
 

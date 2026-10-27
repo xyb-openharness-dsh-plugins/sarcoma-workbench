@@ -1,5 +1,5 @@
 'use strict';
-/* 小韧宝 SarcPal v0.2.1 · 软组织肉瘤患者工作台交互原型
+/* 小韧宝 SarcPal v0.2.2 · 软组织肉瘤患者工作台交互原型
    全部患者数据为模拟（demo/build-demo-data.mjs 生成）；不读写真实文件、不调用模型或宿主 API。
    三层信息边界：
      ①事实：值 / 日期 / 谁说的 / 报告原文 —— 可写；
@@ -8,7 +8,7 @@
    判断类统一出口：「这一句需要问你的医生」。
 */
 
-const APP_INFO = { version: '0.2.1', build: '2026-10-25', channelLabel: '交互原型 · 未接入 DSH' };
+const APP_INFO = { version: '0.2.2', build: '2026-10-27', channelLabel: '交互原型 · 未接入 DSH' };
 const DEMO = window.DEMO;
 const D = DEMO.profiles;
 
@@ -385,6 +385,37 @@ function stageEmptyLabel(p) {
   const site = (p.site[p.site.length - 1] || {}).site || '';
   return NO_GROUP_SITE_RE.test(site) ? '该部位未定义分期组' : '未回报';
 }
+/* 36 号 §2.6 · 看板首卡：病程状态卡四件
+   eyebrow（D+N 状态卡 · 距下一事项）／锚点派生大字天数（不手填）／
+   现状行（阶段原文 + 状态 + 下次日期与事项）／出口按钮排。
+   锚点 = 当前治疗线序的开始日（照抄 lines.start）；没有该字段时整卡「待初始化」。
+   L42：状态卡排在业务首卡（今日一页 hero）之上，两块串行，不抢位置。 */
+function dashStatusCard(p) {
+  const line = p.lines && p.lines.length ? p.lines[p.lines.length - 1] : null;
+  const anchor = line && line.start ? line.start : '';
+  const trigger = '<button type="button" data-primer-open>疾病概要：软组织肉瘤是什么？</button>';
+  if (!anchor) {
+    return `<section class="card status-card" aria-label="病程状态卡">
+      <p class="status-eyebrow">状态卡 · 待初始化</p>
+      <p class="status-day"><b class="pending">待初始化</b><span class="status-anchor">还没有可派生天数的锚点日</span></p>
+      <p class="status-now"><span class="status-phase">三步向导</span><span class="status-state">① 记录确诊与分级　② 补首次治疗线序的开始日　③ 写入下次复查日期</span><span class="status-next">下次：待初始化后按锚点计算</span></p>
+      <div class="status-actions"><button type="button" class="primary" data-view="diagnosis">开始三步初始化 →</button>${trigger}</div>
+    </section>`;
+  }
+  const day = Math.max(0, daysBetween(anchor, p.window_end));
+  const ongoing = /进行中/.test(line.status || '');
+  const stateTxt = (line.status || '状态未记录') + (line.end ? `（末次 ${line.end}）` : '');
+  const primary = ongoing
+    ? '<button type="button" class="primary" data-view="treatment">看治疗线序（按线）→</button>'
+    : '<button type="button" class="primary" data-view="followup" data-sub="1">看随访五档（按分期）→</button>';
+  return `<section class="card status-card" aria-label="病程状态卡">
+    <p class="status-eyebrow">D+${day} 状态卡 · 距下次复查（未记录）</p>
+    <p class="status-day"><b>第 ${day} 天</b><span class="status-anchor">锚点：${esc(anchor)} ${esc(line.name)}开始（照抄治疗线序）</span></p>
+    <p class="status-now"><span class="status-phase">${esc(line.name || '阶段待记录')}</span><span class="status-state">${esc(stateTxt)}</span><span class="status-next">下次：待录入（复查安排未在本机记录）</span></p>
+    <div class="status-actions">${primary}${trigger}</div>
+  </section>`;
+}
+
 function vDashboard() {
   const p = P();
   const imgs = p.imaging;
@@ -415,6 +446,7 @@ function vDashboard() {
   ].sort((a, b) => (a.d < b.d ? 1 : -1)).slice(0, 5);
 
   return `${pageHead()}
+  ${dashStatusCard(p)}
   <section class="hero">
     <div><span class="eyebrow">今日一页 · ${esc(p.name)}</span>
       <h1>${esc(p.headline)}</h1>

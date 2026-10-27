@@ -3,14 +3,18 @@
  * 全部内容属第 ② 层（解释）：只写定义、文件、指南列举过的手段、已发生的变化。
  * 任何「你该怎么办」的判断都不在这里，固定出口是「这一句需要问你的医生」。
  *
- * 原件状态照实写：本项目未取得 NCCN / CSCO / AJCC / WHO 的指南原件，
- * 因此所有页码一律「页码待核」，来源栏统一标「未取得原件，据二次来源」。
+ * 原件状态照实写（2026-10-27 逐条真浏览器验活）：
+ * - NCCN 患者版与临床版都只有官方详情页可达；PDF 直链在无头浏览器里正文为空（THIN），
+ *   因此两行都记「官方入口页」，不写「已取得」。
+ * - AJCC 第 8 版手册是付费书，WHO 第 5 版全书需购买/机构订阅：只给官方出版页。
+ * - CSCO 无官方免费全文：nolink + note，不编 URL。
+ * 页码一律「页码待核」。
  */
 window.DISEASE_PRIMER = {
   brand: '小韧宝 SarcPal',
   name: '软组织肉瘤',
   en: 'Soft Tissue Sarcoma（STS）',
-  updated: '2026-10-25',
+  updated: '2026-10-27',
   sections: [
     {
       id: 'definition',
@@ -24,22 +28,43 @@ window.DISEASE_PRIMER = {
         '组织学分级（常用 FNCLCC 三级）与 TNM 分期不是并列的两套东西：分级是分期组的输入变量之一，两者不能互推。'
       ],
       sources: [
-        { org: 'WHO', doc: 'Classification of Tumours: Soft Tissue and Bone Tumours, 5th ed.', version: '2020', original: false, page: '页码待核' },
-        { org: 'AJCC', doc: 'Cancer Staging Manual, 8th ed.（STS 章节）', version: '2017', original: false, page: '页码待核' }
+        { org: 'WHO', doc: 'Classification of Tumours: Soft Tissue and Bone Tumours, 5th ed.', version: '2020', original: false, secondaryUrl: 'https://publications.iarc.fr/Book-And-Report-Series/Who-Classification-Of-Tumours/Soft-Tissue-And-Bone-Tumours-2020', page: '页码待核', note: '第 5 版全书需购买；二次来源为 IARC 官方出版页' },
+        { org: 'AJCC', doc: 'Cancer Staging Manual, 8th ed.（STS 章节）', version: '2017', original: false, secondaryUrl: 'https://www.facs.org/quality-programs/cancer-programs/american-joint-committee-on-cancer/cancer-staging-systems/', page: '页码待核', note: '手册为付费书；二次来源为 AJCC 官方分期体系页' }
       ]
     },
     {
       id: 'evidence',
       title: '医学资料规范和指南情况',
       intro: '这台工作台里出现的每一条「该查什么、该怎么分期」，都应能追到下面某一份文件。'
-        + '本项目对这几份文件都只拿到公开页与版本号，没有拿到原件——表格里照实写，不假装看过。',
+        + '本项目没有取得 NCCN / AJCC / WHO / CSCO 的指南原件，表格里照实写，不假装看过。',
       table: {
         head: ['机构', '文件', '版本 / 年份', '原件', '本台的用途'],
         rows: [
-          ['NCCN', 'NCCN Guidelines · Soft Tissue Sarcoma', 'V3.2026（2026-03-12 生效）', '未取得原件', '分期检查、治疗路径与随访节奏的并列引用（机构 + 版本 + 表号）'],
-          ['AJCC', 'Cancer Staging Manual, 8th ed.（STS 章节）', '2017', '未取得原件', 'TNM 与组织学分级如何进入分期组；哪些部位未定义分期组'],
-          ['WHO', 'Soft Tissue and Bone Tumours, 5th ed.', '2020', '未取得原件', '病理亚型命名的唯一口径'],
-          ['CSCO', '骨与软组织肿瘤诊疗指南', '2025 版', '未取得原件', '国内可及药物与本土实践差异，本版暂不作引用依据']
+          ['NCCN',
+            'NCCN Guidelines for Patients · Soft Tissue Sarcoma',
+            '2025（据临床版 V1.2025 改编，66 页）',
+            { text: '官方入口页 · 患者版（免费）', kind: 'hub', url: 'https://www.nccn.org/patientresources/patient-resources/guidelines-for-patients/guidelines-for-patients-details?patientGuidelineId=37', note: '详情页可下载患者版 PDF；PDF 直链在无头浏览器中正文为空（THIN），本台未存档该 PDF' },
+            '分期检查、治疗路径与随访节奏的患者版并列引用'],
+          ['NCCN',
+            'NCCN Guidelines · Soft Tissue Sarcoma（临床版）',
+            'V5.2026（官网现行；本台正文引用仍为 V3.2026）',
+            { text: '官方入口页 · 临床版（需注册）', kind: 'hub', url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1464', note: '临床版全文需在 NCCN 官网注册后取得；本台未取得该版原件' },
+            '分期检查、治疗路径与随访节奏的并列引用（机构 + 版本 + 表号）'],
+          ['AJCC',
+            'Cancer Staging Manual, 8th ed.（STS 章节）',
+            '2017',
+            { text: '官方入口页 · 分期体系（手册付费）', kind: 'hub', url: 'https://www.facs.org/quality-programs/cancer-programs/american-joint-committee-on-cancer/cancer-staging-systems/', note: '第 8 版手册为付费书，官方仅免费第 1 章分期总则；STS 章节未取得' },
+            'TNM 与组织学分级如何进入分期组；哪些部位未定义分期组'],
+          ['WHO',
+            'Soft Tissue and Bone Tumours, 5th ed.',
+            '2020',
+            { text: '官方入口页 · IARC 出版页（全书付费）', kind: 'hub', url: 'https://publications.iarc.fr/Book-And-Report-Series/Who-Classification-Of-Tumours/Soft-Tissue-And-Bone-Tumours-2020', note: '第 5 版全书需购买；在线版需机构订阅；本台未取得原件' },
+            '病理亚型命名的唯一口径'],
+          ['CSCO',
+            '骨与软组织肿瘤诊疗指南',
+            '2025 版',
+            { text: '未取得原件 · 无官方免费全文', nolink: true, note: 'CSCO 指南以纸质/合订本发行，官网未提供公开 PDF（2026-10-27 检索）' },
+            '国内可及药物与本土实践差异，本版暂不作引用依据']
         ]
       },
       points: [
@@ -48,10 +73,11 @@ window.DISEASE_PRIMER = {
         '国内指南（CSCO 骨与软组织肿瘤诊疗指南）与 AJCC 分期回答的不是同一个问题：前者讲治疗怎么选，后者讲解剖范围到了哪一步。两者不互推、不换算，引用时各自标注出处。'
       ],
       sources: [
-        { org: 'NCCN', doc: 'NCCN Guidelines · Soft Tissue Sarcoma', version: 'V3.2026', original: false, page: '页码待核' },
-        { org: 'AJCC', doc: 'AJCC Cancer Staging Manual, 8th ed.', version: '2017', original: false, page: '页码待核' },
-        { org: 'WHO', doc: 'Soft Tissue and Bone Tumours, 5th ed.', version: '2020', original: false, page: '页码待核' },
-        { org: 'CSCO', doc: '骨与软组织肿瘤诊疗指南', version: '2025 版', original: false, page: '页码待核' }
+        { org: 'NCCN', doc: 'NCCN Guidelines for Patients · Soft Tissue Sarcoma', version: '2025（据临床版 V1.2025 改编）', entry: true, kind: 'hub', url: 'https://www.nccn.org/patientresources/patient-resources/guidelines-for-patients/guidelines-for-patients-details?patientGuidelineId=37', note: '免费患者版详情页；临床版全文需另行注册，本台未取得原件' },
+        { org: 'NCCN', doc: 'NCCN Guidelines · Soft Tissue Sarcoma', version: 'V5.2026', entry: true, kind: 'hub', url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1464', note: '临床版全文需在 NCCN 官网注册后取得；本台未取得该版原件' },
+        { org: 'AJCC', doc: 'AJCC Cancer Staging Manual, 8th ed.', version: '2017', original: false, secondaryUrl: 'https://www.facs.org/quality-programs/cancer-programs/american-joint-committee-on-cancer/cancer-staging-systems/', page: '页码待核' },
+        { org: 'WHO', doc: 'Soft Tissue and Bone Tumours, 5th ed.', version: '2020', original: false, secondaryUrl: 'https://publications.iarc.fr/Book-And-Report-Series/Who-Classification-Of-Tumours/Soft-Tissue-And-Bone-Tumours-2020', page: '页码待核' },
+        { org: 'CSCO', doc: '骨与软组织肿瘤诊疗指南', version: '2025 版', nolink: true, note: 'CSCO 指南以纸质/合订本发行，官网未提供公开 PDF（2026-10-27 检索）' }
       ]
     },
     {
@@ -88,7 +114,7 @@ window.DISEASE_PRIMER = {
         '以上是文献与指南里列出的手段，按病期与线序排列，不代表任何一项适合你。选哪一个，这一句需要问你的医生。'
       ],
       sources: [
-        { org: 'NCCN', doc: 'NCCN Guidelines · Soft Tissue Sarcoma', version: 'V3.2026', original: false, page: '页码待核' }
+        { org: 'NCCN', doc: 'NCCN Guidelines · Soft Tissue Sarcoma', version: 'V5.2026', entry: true, kind: 'hub', url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1464', note: '临床版全文需在 NCCN 官网注册后取得；本台未取得该版原件' }
       ]
     },
     {
@@ -99,13 +125,15 @@ window.DISEASE_PRIMER = {
       points: [
         '2013 年：WHO 第 4 版《软组织与骨肿瘤分类》出版。',
         '2020 年：WHO 第 5 版出版，取代第 4 版；软组织与骨肿瘤合并为一卷，部分亚型被重命名或重新归类。',
-        '2026-03-12：NCCN 软组织肉瘤指南由 V2.2026 更新为 V3.2026 并生效。',
+        '2025-05-02：NCCN 软组织肉瘤临床指南 V1.2025 生效；患者版《Soft Tissue Sarcoma, 2025》即据此版改编（66 页）。',
+        '截至 2026-10-27：NCCN 官网 Soft Tissue Sarcoma 指南条目显示版本为 V5.2026（临床版全文需注册）；本台正文引用仍锁 V3.2026，换版需逐条复核（见 docs/DIFF-MATRIX.md）。',
         '截至 2026-10：中国药物临床试验登记与信息公示平台可检索到软组织肉瘤相关登记 60 条，其中 I 期与 II 期占多数；本项目另有 150 条被按病种排除（骨肉瘤、尤文、软骨肉瘤、GIST、硬纤维瘤、脊索瘤、卡波西等），排除清单见 research/sarcoma/。数字随检索日期变化，检索式与日期须一并记录。'
       ],
       sources: [
-        { org: 'WHO', doc: 'Soft Tissue and Bone Tumours, 5th ed.', version: '2020', original: false, page: '页码待核' },
-        { org: 'NCCN', doc: 'NCCN Guidelines · Soft Tissue Sarcoma', version: 'V3.2026', original: false, page: '更新记录页，页码待核' },
-        { org: 'NMPA 药品审评中心', doc: '药物临床试验登记与信息公示平台（chinadrugtrials.org.cn）', version: '检索日 2026-10', original: true, note: '一手登记数据，本项目自采' }
+        { org: 'WHO', doc: 'Soft Tissue and Bone Tumours, 5th ed.', version: '2020', original: false, secondaryUrl: 'https://publications.iarc.fr/Book-And-Report-Series/Who-Classification-Of-Tumours/Soft-Tissue-And-Bone-Tumours-2020', page: '页码待核' },
+        { org: 'NCCN', doc: 'NCCN Guidelines · Soft Tissue Sarcoma', version: 'V5.2026', entry: true, kind: 'hub', url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1464', note: '版本号取自官网条目；临床版全文需注册，本台未取得原件' },
+        { org: 'NMPA 药品审评中心', doc: '药物临床试验登记与信息公示平台（chinadrugtrials.org.cn）', version: '检索日 2026-10', nolink: true, note: '平台检索页对脚本返回 202/空正文，无法验活；60 条为项目自采快照，检索式与日期见 research/sarcoma/manifest.json' },
+        { org: 'ClinicalTrials.gov', doc: 'Soft Tissue Sarcoma 检索入口', version: '检索日 2026-10-27', original: true, kind: 'registry', url: 'https://clinicaltrials.gov/search?cond=Soft%20Tissue%20Sarcoma', note: '国际登记库检索入口，作交叉核对；本台未在该库自采快照' }
       ]
     }
   ]

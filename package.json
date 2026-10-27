@@ -1,6 +1,6 @@
 {
   "name": "@xyb-community/sarcoma-workbench",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "软组织肉瘤（STS）患者与照护者的本机病程资料工作台：把散落的病理与分型、手术与切缘记录、治疗线序与副作用、复查影像与功能变化整理成可核对、可回溯的材料，并整理成就诊能带着走的问题清单。",
   "private": true,
   "type": "module",
@@ -20,7 +20,7 @@
     "NOTICE.md"
   ],
   "scripts": {
-    "check": "node --check dsh/index.js && node --check lib/client.js && node scripts/check-workbench-package.mjs .",
+    "check": "node --check dsh/index.js && node --check lib/client.js && node scripts/check-workbench-package.mjs . && node scripts/check-primer-links.mjs && node scripts/check-client-primer.mjs",
     "audit": "node scripts/check-conformance.mjs .",
     "release:check": "npm run check && npm run audit",
     "pack:check": "npm pack --dry-run",

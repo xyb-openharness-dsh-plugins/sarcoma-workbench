@@ -183,6 +183,17 @@ small{font-size:calc(11.5px * var(--tz));color:var(--muted)}
 .num{font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* ---------- 看板 ---------- */
+/* 36 号 §2.6 · 病程状态卡（看板首卡，排在业务首卡之上） */
+.status-card{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;border-color:var(--line-strong)}
+.status-eyebrow{margin:0;font-size:calc(10.5px * var(--tz));letter-spacing:1.2px;font-weight:600;color:var(--accent-deep);text-transform:uppercase}
+.status-day{margin:0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.status-day b{font-size:calc(28px * var(--tz));line-height:1.15;font-weight:700;color:var(--accent-deep);font-variant-numeric:tabular-nums}
+.status-day b.pending{color:var(--muted)}
+.status-anchor{font-size:calc(11px * var(--tz));color:var(--muted)}
+.status-now{margin:0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:calc(12px * var(--tz))}
+.status-phase{font-weight:600;color:var(--ink)}
+.status-state,.status-next{color:var(--muted)}
+.status-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .hero{background:var(--accent-soft);border:1px solid var(--line-strong);border-radius:18px;padding:22px 24px;margin-bottom:14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}
 .hero h1{margin:6px 0 7px;font-size:clamp(calc(21px * var(--tz)),2.1vw,calc(28px * var(--tz)))}
 .hero p{font-size:calc(12.5px * var(--tz));max-width:62ch}
