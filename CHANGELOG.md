@@ -2,6 +2,16 @@
 
 只增不删；每条写清"改了什么 + 为什么 + 用户可见结果"。版本号与 VERSION、package.json 三处必须一致。
 
+## 0.2.4 — 2026-10-28
+
+- **修装机后业务区空白（根因）**：`dsh/index.js` 把静态路由注册成 `kind: 'prefix', path: '/api/sarcoma/ui/'`，而宿主
+  `dsh-host-webserver` 的 `match()` 判定是 `pathname === prefix || pathname.startsWith(prefix + '/')`——前缀以 `/` 结尾时，
+  子路径要命中 `/api/sarcoma/ui//`。结果只有 iframe 的入口页 `/ui/` 能命中，`/ui/app.js`、`/ui/style.css` 全部落到宿主的
+  SPA 兜底（200 text/html），浏览器把 HTML 当 JS/CSS 解析，面板只剩顶栏与分栏，业务区空白。
+  改为注册不带尾斜杠的 `/api/sarcoma/ui`，静态层仍按 `/api/sarcoma/ui/` 剥前缀。用户可见结果：装机后 iframe 正常加载
+  `public/index.html` 与四件套。
+- 版本升 0.2.4（VERSION / package.json 同步）。
+
 ## 0.2.2 — 2026-10-27
 
 - 装机界面补齐 + AI 面板收敛（评审反馈）：把 `prototypes/v0.2` 提升为 `public/` 并随包发出；新增 `dsh/server.js` 与 `/api/sarcoma/ui/` 前缀路由；`lib/client.js` 改为 iframe 装 public（原骨架仅作加载失败兜底）。同时删掉页面自建的「AI 对话」抽屉（含 发送 / 整理本页要点 / 自检判断类措辞 / 窄-标准-宽），顶栏只留一个「AI 对话」入口，`postMessage(sarcoma:agent-open)` 请宿主开原生会话。
