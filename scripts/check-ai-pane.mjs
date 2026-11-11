@@ -44,8 +44,14 @@ check(/display: paneVisible \? 'flex' : 'none'/.test(source), 'aside 常挂载�
 check(/'aria-label': 'AI 对话'/.test(source), 'aside aria-label="AI 对话"')
 check(/'aria-label': `AI 对话：\$\{agentLabel\}`/.test(source), '顶栏 AI 对话按钮带 aria-label')
 check(/disabled: connecting \|\| !canOpenSession/.test(source), '无能力/连接中按钮禁用')
-check(/canOpenSession[\s\S]{0,160}?ensureSession/.test(source), '能力判定来自 ensureSession')
-check(/ensureSession/.test(source), '点击打开/复用归属会话（ensureSession）')
+/* 2026-11-11 合同变更：创建会话统一走 newSession(workspaceId)。
+   ensureSession({folder}) 已废弃——它会绕过"工作区由用户选择"且取消时留下空会话。
+   断言随之改为要求 newSession + defaultWorkspace，并禁止 ensureSession 调用（注释里提到不算）。 */
+const codeOnly = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+check(/canOpenSession[\s\S]{0,200}?newSession/.test(codeOnly), '能力判定来自 newSession')
+check(/newSession\s*\(/.test(codeOnly), '点击打开/创建归属会话（newSession）')
+check(/defaultWorkspace/.test(codeOnly), 'workspaceId 取自 defaultWorkspace')
+check(!/ensureSession\s*\(/.test(codeOnly), '不再调用 ensureSession（已废弃）')
 check(/setDraft/.test(source) && !/input\.submit/.test(source), '开场白只进草稿，不自动发送')
 check(/inject: \['desktopWorkbenches', 'sessions'\]/.test(source), '注入 sessions 以写原生草稿')
 
