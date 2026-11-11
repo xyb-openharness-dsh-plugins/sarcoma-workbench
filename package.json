@@ -1,6 +1,6 @@
 {
   "name": "@xyb-community/sarcoma-workbench",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "本机优先的软组织肉瘤（STS）病理亚型档案、部位分轨随访、局部与全身治疗线并行、影像基线锚点与试验检索工作台",
   "private": true,
   "type": "module",
@@ -14,13 +14,14 @@
   "files": [
     "dsh",
     "lib",
+    "public",
     "assets",
     "cordis.patch.yml",
     "README.md",
     "NOTICE.md"
   ],
   "scripts": {
-    "check": "node --check dsh/index.js && node --check lib/client.js && node scripts/check-workbench-package.mjs . && node scripts/check-host-contract.mjs",
+    "check": "node --check dsh/index.js && node --check dsh/static.js && node --check lib/client.js && node scripts/build-version.mjs --check && node scripts/build-public.mjs --check && node scripts/check-workbench-package.mjs . && node scripts/check-host-contract.mjs && node scripts/check-agent-pane-contract.mjs . && node --test test/*.test.mjs",
     "check:host": "node scripts/check-host-contract.mjs",
     "test": "node --test test/*.test.mjs",
     "audit": "node scripts/check-conformance.mjs .",
@@ -28,7 +29,11 @@
     "pack:check": "npm pack --dry-run",
     "probe:artifact": "node scripts/serve-artifact.mjs",
     "probe:tabs": "python3 scripts/verify-tabs-on-artifact.py",
-    "probe:page-view": "node scripts/probe-page-view.mjs"
+    "probe:page-view": "node scripts/probe-page-view.mjs",
+    "build:public": "node scripts/build-public.mjs",
+    "check:public": "node scripts/build-public.mjs --check",
+    "build:version": "node scripts/build-version.mjs",
+    "check:version": "node scripts/build-version.mjs --check"
   },
   "dsh": {
     "bundle": {
