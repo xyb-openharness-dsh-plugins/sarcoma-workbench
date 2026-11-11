@@ -1,0 +1,2265 @@
+{
+  "dataset": "sarcoma-trials-2026",
+  "generated_at": "2026-10-25T01:26:41.372Z",
+  "generated_at_start": "2026-10-25T01:20:50.292Z",
+  "tool": {
+    "name": "unified-trial-mcp",
+    "version": "0.3.1",
+    "root": "/Users/qinxiaoqiang/Downloads/unified_search_trials",
+    "transport": "MCP stdio（node dist/src/cli/main.js serve）",
+    "node_version": "v22.22.2",
+    "mcp_tools": [
+      {
+        "name": "search_trials",
+        "description": "在多个已配置来源中检索临床试验并合并结果。响应包含每个来源的终态（statuses）与覆盖状况（coverage）：只有 SUCCESS/NO_RESULTS 的来源才算真正查询过；其它状态的缺失不得解读为“不存在相关试验”。离线来源（chictr_pancreatic_archive、xyb_chinadrugtrials_archive）在 statuses[].freshness.dataCutoff 给出数据截止日：该日期之后登记的试验在这些来源中不可见，绝不能据此判定“不存在”。",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "keyword": {
+              "type": "string",
+              "description": "自由文本关键词（疾病、药物、方案名等）。"
+            },
+            "keywords": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "多个关键词；与 keyword 合并使用。"
+            },
+            "condition": {
+              "type": "string",
+              "description": "适应症/疾病，映射到各来源的条件字段。"
+            },
+            "terms": {
+              "type": "string",
+              "description": "检索表达式；当各来源需要不同字段时与 keyword 并用。"
+            },
+            "status": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "招募状态筛选（各来源取值不同，未匹配的来源将按其自身语义返回）。"
+            },
+            "phase": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "试验分期筛选。"
+            },
+            "country": {
+              "type": "string",
+              "description": "国家/地区筛选。"
+            },
+            "isChina": {
+              "type": "boolean",
+              "description": "仅保留有中国站点的试验（CTV 等支持该语义的来源）。"
+            },
+            "startDateFrom": {
+              "type": "string",
+              "description": "起始日期下限（YYYY-MM-DD）。"
+            },
+            "startDateTo": {
+              "type": "string",
+              "description": "起始日期上限（YYYY-MM-DD）。"
+            },
+            "sourceIds": {
+              "type": "array",
+              "description": "限定检索来源；不传表示使用所有已启用来源。未注册的来源会被拒绝，而不是静默忽略。",
+              "items": {
+                "anyOf": [
+                  {
+                    "const": "chinadrugtrials",
+                    "title": "ChinaDrugTrials（受控归档）",
+                    "description": "本地受控增量归档；仅同步时联网，且需要合法的用户会话。"
+                  },
+                  {
+                    "const": "xyb_chinadrugtrials_archive",
+                    "title": "XYB ChinaDrugTrials 数据包（只读离线）",
+                    "description": "只读离线数据包，覆盖范围取决于包内查询关键词与页数；数据截止日由包内记录时间戳推导，该日期之后登记的试验在包内不可见。"
+                  },
+                  {
+                    "const": "chictr_online",
+                    "title": "ChiCTR 在线",
+                    "description": "在线查询，受 WAF、会话有效期与限流约束。"
+                  },
+                  {
+                    "const": "chictr_pancreatic_archive",
+                    "title": "ChiCTR 胰腺癌离线语料",
+                    "description": "仅胰腺癌专题离线语料，非 ChiCTR 全量；数据截止日由语料内时间戳推导，该日期之后登记的试验在语料中不可见。"
+                  },
+                  {
+                    "const": "ctv",
+                    "title": "ClinicalTrials.gov（CTV 本地索引）",
+                    "description": "本地全文索引；未同步的记录不可见。"
+                  },
+                  {
+                    "const": "ictrp",
+                    "title": "WHO ICTRP",
+                    "description": "全球登记库聚合；已知上游结果不完整。"
+                  }
+                ]
+              },
+              "uniqueItems": true
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20,
+              "description": "每个来源返回的最大记录数。"
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "分页偏移（按来源各自分页，非全局分页）。"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "get_trial_detail",
+        "description": "按 recordId（\"<来源>:<来源记录号>\"）返回单一来源的单条记录详情与原始字段。",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "recordId": {
+              "type": "string",
+              "description": "来自 search_trials 的 recordId，例如 chictr_pancreatic_archive:34440。"
+            }
+          },
+          "required": [
+            "recordId"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "get_record_evidence",
+        "description": "返回某条记录的原始证据引用（原始 HTML、源 JSON、Word、字段摘录）。路径均在配置允许的根目录之内，不接受调用方传入的任意路径。",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "recordId": {
+              "type": "string",
+              "description": "来自 search_trials 的 recordId。"
+            },
+            "evidenceKinds": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "raw_html",
+                  "source_json",
+                  "source_word",
+                  "raw_text",
+                  "field_excerpt"
+                ]
+              },
+              "description": "期望的证据类型；来源不支持时返回明确的不可用原因。"
+            },
+            "maxExcerptChars": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20000,
+              "description": "摘录最大字符数。"
+            }
+          },
+          "required": [
+            "recordId"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "get_source_status",
+        "description": "返回每个来源的就绪状态与数据依赖情况，不发起检索。SUCCESS 表示入口与数据就绪，不代表该来源包含目标试验。对离线来源同时返回 freshness.dataCutoff（数据截止日）、cutoffSource（截止日的推导依据，可回源核对）与 updateHint（如何贡献更新的数据包）；离线来源是小胰宝社区共同维护的快照，需持续更新。",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sourceIds": {
+              "type": "array",
+              "description": "限定检索来源；不传表示使用所有已启用来源。未注册的来源会被拒绝，而不是静默忽略。",
+              "items": {
+                "anyOf": [
+                  {
+                    "const": "chinadrugtrials",
+                    "title": "ChinaDrugTrials（受控归档）",
+                    "description": "本地受控增量归档；仅同步时联网，且需要合法的用户会话。"
+                  },
+                  {
+                    "const": "xyb_chinadrugtrials_archive",
+                    "title": "XYB ChinaDrugTrials 数据包（只读离线）",
+                    "description": "只读离线数据包，覆盖范围取决于包内查询关键词与页数；数据截止日由包内记录时间戳推导，该日期之后登记的试验在包内不可见。"
+                  },
+                  {
+                    "const": "chictr_online",
+                    "title": "ChiCTR 在线",
+                    "description": "在线查询，受 WAF、会话有效期与限流约束。"
+                  },
+                  {
+                    "const": "chictr_pancreatic_archive",
+                    "title": "ChiCTR 胰腺癌离线语料",
+                    "description": "仅胰腺癌专题离线语料，非 ChiCTR 全量；数据截止日由语料内时间戳推导，该日期之后登记的试验在语料中不可见。"
+                  },
+                  {
+                    "const": "ctv",
+                    "title": "ClinicalTrials.gov（CTV 本地索引）",
+                    "description": "本地全文索引；未同步的记录不可见。"
+                  },
+                  {
+                    "const": "ictrp",
+                    "title": "WHO ICTRP",
+                    "description": "全球登记库聚合；已知上游结果不完整。"
+                  }
+                ]
+              },
+              "uniqueItems": true
+            },
+            "includeDiagnostics": {
+              "type": "boolean",
+              "default": false,
+              "description": "包含路径、条目数等诊断细节。"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "refresh_ictrp",
+        "description": "显式刷新 WHO ICTRP 导出缓存。默认为演练（dry run），需显式 apply=true 才会执行。",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "apply": {
+              "type": "boolean",
+              "default": false,
+              "description": "为 true 才真正执行；默认只返回演练计划。"
+            },
+            "force": {
+              "type": "boolean",
+              "default": false,
+              "description": "忽略上游缓存新鲜度，强制刷新。"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "sync_ctv_index",
+        "description": "显式构建/更新 CTV（Veeva）本地索引。默认为演练，需显式 apply=true 才会执行。",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "apply": {
+              "type": "boolean",
+              "default": false,
+              "description": "为 true 才真正执行；默认只返回演练计划。"
+            },
+            "mode": {
+              "enum": [
+                "sitemap_sync",
+                "csv_import",
+                "detail_backfill"
+              ],
+              "description": "同步模式。"
+            },
+            "maxShards": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "最大分片/批次数。"
+            },
+            "maxRecords": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "最大记录数。"
+            },
+            "incremental": {
+              "type": "boolean",
+              "default": true,
+              "description": "是否增量同步。"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "sync_chinadrugtrials",
+        "description": "按关键词增量同步 ChinaDrugTrials 列表数据到已配置的归档目录。需要人工配置的合法会话 Cookie；本服务不会自动获取 Cookie、不会绕过验证码或 WAF。默认为演练，需显式 apply=true 且提供 keyword。",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "apply": {
+              "type": "boolean",
+              "default": false,
+              "description": "为 true 才真正抓取；默认只返回演练计划。"
+            },
+            "action": {
+              "const": "sync",
+              "description": "维护动作；该来源仅支持 sync。缺省即 sync。"
+            },
+            "keyword": {
+              "type": "string",
+              "description": "同步关键词；受控来源不支持全量抓取，必须提供。"
+            },
+            "maxPages": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 1,
+              "description": "最多抓取的列表页数（每页 20 条）。"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    ],
+    "serve_stderr_tail": "{\"ts\":\"2026-10-25T01:20:51.434Z\",\"level\":\"info\",\"event\":\"mcp_stdio_connected\",\"fields\":{\"tools\":7}}\n(node:99564) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+  },
+  "doctor": {
+    "statuses": [
+      {
+        "sourceId": "chinadrugtrials",
+        "sourceLabel": "ChinaDrugTrials（受控归档）",
+        "state": "SUCCESS",
+        "reasonCode": "OK_WITH_LOCAL_ARCHIVE",
+        "explanation": "已配置会话 Cookie，且存在本地归档；查询优先使用本地归档，避免不必要的在线抓取。",
+        "attempted": true,
+        "elapsedMs": 1,
+        "freshness": {
+          "kind": "controlled_session_archive",
+          "staleAfterDays": 30
+        },
+        "coverage": {
+          "scope": "本地受控增量归档；仅同步时联网，且需要合法的用户会话。",
+          "zeroResultMeaning": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+          "indexOrArchiveOnly": false
+        },
+        "completeness": {
+          "isLowerBound": false,
+          "warnings": [
+            "cookieConfigured=true",
+            "archive={\"path\":\"/Users/qinxiaoqiang/Downloads/unified_search_trials/.data/chinadrugtrials\",\"readable\":true}"
+          ]
+        }
+      },
+      {
+        "sourceId": "xyb_chinadrugtrials_archive",
+        "sourceLabel": "XYB ChinaDrugTrials 数据包（只读离线）",
+        "state": "SUCCESS",
+        "reasonCode": "OK_WITH_WARNINGS",
+        "explanation": "可用数据包 1 个，覆盖关键词：胰腺癌。 数据截止 2026-09-29（最早抓取 2026-08-14）；此后登记的试验在数据包中不可见。",
+        "attempted": true,
+        "elapsedMs": 88,
+        "freshness": {
+          "kind": "offline_archive",
+          "scrapedAt": "2026-10-04T13:25:17.882568",
+          "dataCutoff": "2026-09-29T07:59:24.275394",
+          "cutoffSource": "各数据包内记录级 scrape_time 与 summary.json 声明（较新者）；覆盖率 已逐条读取记录",
+          "updateHint": "该数据包由小胰宝社区按关键词抓取并共同维护，非官方实时数据。如需更新，请用社区的抓取流程生成新的 output 数据包后，通过 configure --xyb-archive <output 目录> 指向它，或向仓库提交更新的数据包。",
+          "staleAfterDays": 90,
+          "stale": false
+        },
+        "coverage": {
+          "scope": "只读离线数据包，覆盖范围取决于包内查询关键词与页数；数据截止日由包内记录时间戳推导，该日期之后登记的试验在包内不可见。",
+          "zeroResultMeaning": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+          "indexOrArchiveOnly": true
+        },
+        "completeness": {
+          "isLowerBound": false,
+          "warnings": [
+            "packages=1",
+            "skippedPackages=2",
+            "totalRecords=139",
+            "dataCutoff=2026-09-29T07:59:24.275394",
+            "capturedFrom=2026-08-14T03:51:52.668977",
+            "perPackageCutoff=[{\"name\":\"胰腺癌\",\"cutoff\":\"2026-09-29T07:59:24.275394\",\"capturedFrom\":\"2026-08-14T03:51:52.668977\",\"spread\":true}]",
+            "updateHint=该数据包由小胰宝社区按关键词抓取并共同维护，非官方实时数据。如需更新，请用社区的抓取流程生成新的 output 数据包后，通过 configure --xyb-archive <output 目录> 指向它，或向仓库提交更新的数据包。",
+            "warnings=已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。 | 数据包并非单次快照：记录抓取时间跨度为 2026-08-14 至 2026-09-29。该区间之后登记的试验在所有包内均不可见。 | 各数据包并非同一次快照：最早的抓取时间为 2026-08-14，最晚为 2026-09-29。该区间之后登记的试验在所有包内均不可见。"
+          ]
+        }
+      },
+      {
+        "sourceId": "chictr_online",
+        "sourceLabel": "ChiCTR 在线",
+        "state": "SUCCESS",
+        "reasonCode": "OK",
+        "explanation": "ChiCTR 在线入口可用；检索受上游缓存与访问限流约束。",
+        "attempted": true,
+        "elapsedMs": 668,
+        "freshness": {
+          "kind": "cached_network",
+          "staleAfterDays": 7
+        },
+        "coverage": {
+          "scope": "在线查询，受 WAF、会话有效期与限流约束。",
+          "zeroResultMeaning": "仅表示本次在线查询无命中；结果依赖短期会话与缓存。",
+          "indexOrArchiveOnly": false
+        },
+        "completeness": {
+          "isLowerBound": false,
+          "warnings": [
+            "entry=/Users/qinxiaoqiang/Downloads/chictr_trials/dist/index.js",
+            "accessState=NORMAL"
+          ]
+        }
+      },
+      {
+        "sourceId": "chictr_pancreatic_archive",
+        "sourceLabel": "ChiCTR 胰腺癌离线语料",
+        "state": "NEEDS_SETUP",
+        "reasonCode": "PATH_MISSING",
+        "explanation": "路径不存在：/nonexistent/x.db",
+        "attempted": true,
+        "elapsedMs": 0,
+        "freshness": {
+          "kind": "offline_archive",
+          "staleAfterDays": 90
+        },
+        "coverage": {
+          "scope": "仅胰腺癌专题离线语料，非 ChiCTR 全量；数据截止日由语料内时间戳推导，该日期之后登记的试验在语料中不可见。",
+          "zeroResultMeaning": "仅表示该胰腺癌专题语料内无命中；不覆盖 ChiCTR 全量与其他疾病领域，也不包含数据截止日之后登记的试验。",
+          "indexOrArchiveOnly": true
+        },
+        "completeness": {
+          "isLowerBound": false,
+          "warnings": []
+        },
+        "fixHint": "通过 configure 指向正确的文件，或先运行 bootstrap。"
+      },
+      {
+        "sourceId": "ctv",
+        "sourceLabel": "ClinicalTrials.gov（CTV 本地索引）",
+        "state": "SUCCESS",
+        "reasonCode": "OK",
+        "explanation": "CTV 上游入口可用；检索基于本地子集索引，零命中只代表本地索引未命中。",
+        "attempted": true,
+        "elapsedMs": 0,
+        "freshness": {
+          "kind": "local_index",
+          "staleAfterDays": 30
+        },
+        "coverage": {
+          "scope": "本地全文索引；未同步的记录不可见。",
+          "zeroResultMeaning": "仅表示本地 SQLite/FTS 索引未命中，不代表 ClinicalTrials.gov 上不存在该试验。",
+          "indexOrArchiveOnly": true
+        },
+        "completeness": {
+          "isLowerBound": false,
+          "warnings": [
+            "entry=/Users/qinxiaoqiang/Downloads/ctv-mcp-server/dist/index.js"
+          ]
+        }
+      },
+      {
+        "sourceId": "ictrp",
+        "sourceLabel": "WHO ICTRP",
+        "state": "SUCCESS",
+        "reasonCode": "OK",
+        "explanation": "ICTRP 上游入口可用；注意上游导出存在已知静默缺口。",
+        "attempted": true,
+        "elapsedMs": 1,
+        "freshness": {
+          "kind": "cached_network",
+          "staleAfterDays": 7
+        },
+        "coverage": {
+          "scope": "全球登记库聚合；已知上游结果不完整。",
+          "zeroResultMeaning": "仅表示本次 ICTRP 查询无返回；上游存在已知静默缺失，零结果不能作为“不存在”的结论。",
+          "indexOrArchiveOnly": false
+        },
+        "completeness": {
+          "isLowerBound": true,
+          "warnings": [
+            "entry=/Users/qinxiaoqiang/Downloads/ictrp-mcp-service/npm/dist/index.js",
+            "lowerBound=true"
+          ]
+        }
+      }
+    ],
+    "exitCode": 1,
+    "configDir": "/Users/qinxiaoqiang/.unified-trial-mcp",
+    "configPath": "/Users/qinxiaoqiang/.unified-trial-mcp/unified-trial-mcp.config.json",
+    "warnings": [
+      "已从 /Users/qinxiaoqiang/.unified-trial-mcp/cookie.env 读取会话 Cookie（仅按需读取，从不输出其值）。"
+    ],
+    "stderr": "(node:99559) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+  },
+  "query": {
+    "terms": [
+      "soft tissue sarcoma",
+      "sarcoma",
+      "leiomyosarcoma",
+      "liposarcoma",
+      "synovial sarcoma",
+      "undifferentiated pleomorphic sarcoma",
+      "rhabdomyosarcoma",
+      "angiosarcoma",
+      "fibrosarcoma",
+      "epithelioid sarcoma",
+      "desmoid",
+      "GIST",
+      "软组织肉瘤",
+      "肉瘤",
+      "脂肪肉瘤",
+      "平滑肌肉瘤",
+      "滑膜肉瘤",
+      "横纹肌肉瘤",
+      "血管肉瘤",
+      "纤维肉瘤",
+      "上皮样肉瘤"
+    ],
+    "window": {
+      "from": "2019-01-01",
+      "rule": "注册日期或最近更新 >= 2019-01-01；两者都缺失时保留并标记 window_status=unknown"
+    },
+    "dedupe_key": "source:registry_id",
+    "source_order": [
+      "ictrp",
+      "ctv",
+      "chictr_online",
+      "chinadrugtrials",
+      "chictr_pancreatic_archive",
+      "xyb_chinadrugtrials_archive"
+    ],
+    "per_source_limit": {
+      "ictrp": 200,
+      "ctv": 200,
+      "chictr_online": 100,
+      "chinadrugtrials": 200,
+      "chictr_pancreatic_archive": 200,
+      "xyb_chinadrugtrials_archive": 200
+    },
+    "scope_rule": "标题优先、条件字段兜底：骨肉瘤/尤文/软骨肉瘤/GIST/硬纤维瘤/脊索瘤/其他骨肿瘤标为 out_of_scope_<type>；标题含软组织肉瘤或亚型词标为 in_scope_sts；标题只写软组织肿瘤标为 other_soft_tissue_only；标题没写但条件字段含肉瘤/软组织词标为 other_sarcoma_in_conditions；标题与条件都没有肉瘤/软组织词标为 out_of_scope_unrelated。不剔除任何命中结果。"
+  },
+  "counts": {
+    "raw_by_source": {
+      "ictrp": 0,
+      "ctv": 131,
+      "chictr_online": 69,
+      "chinadrugtrials": 179,
+      "chictr_pancreatic_archive": 0,
+      "xyb_chinadrugtrials_archive": 2
+    },
+    "raw_total": 381,
+    "unique_before_window": 263,
+    "unique_before_window_by_source": {
+      "ictrp": 0,
+      "ctv": 95,
+      "chictr_online": 32,
+      "chinadrugtrials": 134,
+      "chictr_pancreatic_archive": 0,
+      "xyb_chinadrugtrials_archive": 2
+    },
+    "window_excluded": 0,
+    "window_excluded_by_source": {
+      "ictrp": 0,
+      "ctv": 0,
+      "chictr_online": 0,
+      "chinadrugtrials": 0,
+      "chictr_pancreatic_archive": 0,
+      "xyb_chinadrugtrials_archive": 0
+    },
+    "deduped_total": 263,
+    "by_source_final": {
+      "ictrp": 0,
+      "ctv": 95,
+      "chictr_online": 32,
+      "chinadrugtrials": 134,
+      "chictr_pancreatic_archive": 0,
+      "xyb_chinadrugtrials_archive": 2
+    },
+    "title_has_sarcoma_term_raw": 80,
+    "title_has_sarcoma_term_out_of_scope": 20,
+    "title_has_sarcoma_term_in_scope": 60,
+    "out_of_scope_total": 150,
+    "out_of_scope_specific_total": 80,
+    "out_of_scope_by_type": {
+      "kaposi": 5,
+      "desmoid": 2,
+      "ewing": 7,
+      "gist": 52,
+      "osteosarcoma": 12,
+      "bone_other": 1,
+      "chordoma": 1
+    },
+    "out_of_scope_unrelated_total": 70,
+    "out_of_scope_unrelated_by_category": {
+      "lung": 17,
+      "breast": 5,
+      "renal": 2,
+      "solid_tumor_generic": 21,
+      "hematologic": 5,
+      "colorectal": 4,
+      "other": 13,
+      "gynecologic": 3
+    },
+    "other_total": 53,
+    "other_breakdown": {
+      "soft_tissue_only": 0,
+      "sarcoma_in_conditions": 53
+    },
+    "reconciliation": {
+      "partition": "60 (in_scope_sts) + 150 (out_of_scope) + 53 (other)",
+      "equals_deduped_total": true,
+      "note": "标题含肉瘤词的原始条数 = in_scope_sts + 范围外但标题含 sarcoma 的条数；范围外条数按主标签计，二者可能重叠，因此以三分区对账。out_of_scope 内再分“具体骨/尤文/GIST/硬纤维瘤等”和“与肉瘤无关的命中”。"
+    }
+  },
+  "sources": [
+    {
+      "source": "ictrp",
+      "label": "WHO ICTRP",
+      "status": "FAILED",
+      "count": 0,
+      "raw_count": 0,
+      "queries": 1,
+      "failed_queries": 1,
+      "note": "上游 ictrp_search 返回 isError：FileNotFoundError: [Errno 2] No such file or directory（sidecar 缺陷，非“无结果”）。首次失败后停止后续 20 个检索词。 统一层解释：ictrp_search 上游返回错误：上游工具返回 isError，但未提供错误详情。"
+    },
+    {
+      "source": "ctv",
+      "label": "ClinicalTrials.gov（CTV 本地索引）",
+      "status": "SUCCESS",
+      "count": 95,
+      "raw_count": 131,
+      "queries": 21,
+      "failed_queries": 0,
+      "note": "CTV 上游入口可用；检索基于本地子集索引，零命中只代表本地索引未命中。"
+    },
+    {
+      "source": "chictr_online",
+      "label": "ChiCTR 在线",
+      "status": "SUCCESS",
+      "count": 32,
+      "raw_count": 69,
+      "queries": 21,
+      "failed_queries": 0,
+      "note": "ChiCTR 在线入口可用；检索受上游缓存与访问限流约束。"
+    },
+    {
+      "source": "chinadrugtrials",
+      "label": "ChinaDrugTrials（受控归档）",
+      "status": "SUCCESS",
+      "count": 134,
+      "raw_count": 179,
+      "queries": 21,
+      "failed_queries": 0,
+      "note": "已配置会话 Cookie，且存在本地归档；查询优先使用本地归档，避免不必要的在线抓取。"
+    },
+    {
+      "source": "chictr_pancreatic_archive",
+      "label": "ChiCTR 胰腺癌离线语料",
+      "status": "NOT_CONFIGURED",
+      "count": 0,
+      "raw_count": 0,
+      "queries": 21,
+      "failed_queries": 21,
+      "note": "路径不存在：/nonexistent/x.db。该语料按设计仅覆盖胰腺癌，对肉瘤无覆盖；本次 0 条不是“没有肉瘤试验”。"
+    },
+    {
+      "source": "xyb_chinadrugtrials_archive",
+      "label": "XYB ChinaDrugTrials 数据包（只读离线）",
+      "status": "NO_COVERAGE_INCIDENTAL",
+      "count": 2,
+      "raw_count": 2,
+      "queries": 21,
+      "failed_queries": 0,
+      "note": "离线数据包仅覆盖胰腺癌（139 条，数据截止 2026-09-29）。本次命中 2 条为语料内偶然含“肉瘤”字样的记录，不构成肉瘤覆盖。"
+    }
+  ],
+  "query_log": [
+    {
+      "term": "soft tissue sarcoma",
+      "source": "ictrp",
+      "state": "FAILED",
+      "reason_code": "UPSTREAM_UNKNOWN_ERROR",
+      "explanation": "ictrp_search 上游返回错误：上游工具返回 isError，但未提供错误详情。",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 288
+    },
+    {
+      "term": "soft tissue sarcoma",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 12 条记录。",
+      "result_count": 12,
+      "upstream_reported_total": 12,
+      "rows_returned": 12,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 3065
+    },
+    {
+      "term": "soft tissue sarcoma",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 10 条记录。",
+      "result_count": 10,
+      "upstream_reported_total": null,
+      "rows_returned": 10,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 11145
+    },
+    {
+      "term": "soft tissue sarcoma",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 378
+    },
+    {
+      "term": "soft tissue sarcoma",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 2
+    },
+    {
+      "term": "soft tissue sarcoma",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 147
+    },
+    {
+      "term": "sarcoma",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 84 条记录。",
+      "result_count": 84,
+      "upstream_reported_total": 84,
+      "rows_returned": 84,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 3048
+    },
+    {
+      "term": "sarcoma",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 10 条记录。",
+      "result_count": 10,
+      "upstream_reported_total": null,
+      "rows_returned": 10,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 12900
+    },
+    {
+      "term": "sarcoma",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 442
+    },
+    {
+      "term": "sarcoma",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "sarcoma",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 117
+    },
+    {
+      "term": "leiomyosarcoma",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 6 条记录。",
+      "result_count": 6,
+      "upstream_reported_total": 6,
+      "rows_returned": 6,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 3569
+    },
+    {
+      "term": "leiomyosarcoma",
+      "source": "chictr_online",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本次在线查询无命中；结果依赖短期会话与缓存。",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 13693
+    },
+    {
+      "term": "leiomyosarcoma",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 319
+    },
+    {
+      "term": "leiomyosarcoma",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "leiomyosarcoma",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 153
+    },
+    {
+      "term": "liposarcoma",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 5 条记录。",
+      "result_count": 5,
+      "upstream_reported_total": 5,
+      "rows_returned": 5,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 3599
+    },
+    {
+      "term": "liposarcoma",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 3 条记录。",
+      "result_count": 3,
+      "upstream_reported_total": null,
+      "rows_returned": 3,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 11640
+    },
+    {
+      "term": "liposarcoma",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 306
+    },
+    {
+      "term": "liposarcoma",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 2
+    },
+    {
+      "term": "liposarcoma",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 146
+    },
+    {
+      "term": "synovial sarcoma",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 3 条记录。",
+      "result_count": 3,
+      "upstream_reported_total": 3,
+      "rows_returned": 3,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 3049
+    },
+    {
+      "term": "synovial sarcoma",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 1 条记录。",
+      "result_count": 1,
+      "upstream_reported_total": null,
+      "rows_returned": 1,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 10443
+    },
+    {
+      "term": "synovial sarcoma",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 296
+    },
+    {
+      "term": "synovial sarcoma",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "synovial sarcoma",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 143
+    },
+    {
+      "term": "undifferentiated pleomorphic sarcoma",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 2 条记录。",
+      "result_count": 2,
+      "upstream_reported_total": 2,
+      "rows_returned": 2,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 3129
+    },
+    {
+      "term": "undifferentiated pleomorphic sarcoma",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 1 条记录。",
+      "result_count": 1,
+      "upstream_reported_total": null,
+      "rows_returned": 1,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 11535
+    },
+    {
+      "term": "undifferentiated pleomorphic sarcoma",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 603
+    },
+    {
+      "term": "undifferentiated pleomorphic sarcoma",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "undifferentiated pleomorphic sarcoma",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 139
+    },
+    {
+      "term": "rhabdomyosarcoma",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 3 条记录。",
+      "result_count": 3,
+      "upstream_reported_total": 3,
+      "rows_returned": 3,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 2851
+    },
+    {
+      "term": "rhabdomyosarcoma",
+      "source": "chictr_online",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本次在线查询无命中；结果依赖短期会话与缓存。",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 9900
+    },
+    {
+      "term": "rhabdomyosarcoma",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 349
+    },
+    {
+      "term": "rhabdomyosarcoma",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 2
+    },
+    {
+      "term": "rhabdomyosarcoma",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 145
+    },
+    {
+      "term": "angiosarcoma",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 1 条记录。",
+      "result_count": 1,
+      "upstream_reported_total": 1,
+      "rows_returned": 1,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 3102
+    },
+    {
+      "term": "angiosarcoma",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 2 条记录。",
+      "result_count": 2,
+      "upstream_reported_total": null,
+      "rows_returned": 2,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 11716
+    },
+    {
+      "term": "angiosarcoma",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 273
+    },
+    {
+      "term": "angiosarcoma",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 0
+    },
+    {
+      "term": "angiosarcoma",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 137
+    },
+    {
+      "term": "fibrosarcoma",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 3 条记录。",
+      "result_count": 3,
+      "upstream_reported_total": 3,
+      "rows_returned": 3,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 3463
+    },
+    {
+      "term": "fibrosarcoma",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 2 条记录。",
+      "result_count": 2,
+      "upstream_reported_total": null,
+      "rows_returned": 2,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 13144
+    },
+    {
+      "term": "fibrosarcoma",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 298
+    },
+    {
+      "term": "fibrosarcoma",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "fibrosarcoma",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 161
+    },
+    {
+      "term": "epithelioid sarcoma",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 1 条记录。",
+      "result_count": 1,
+      "upstream_reported_total": 1,
+      "rows_returned": 1,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 3612
+    },
+    {
+      "term": "epithelioid sarcoma",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 1 条记录。",
+      "result_count": 1,
+      "upstream_reported_total": null,
+      "rows_returned": 1,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 11519
+    },
+    {
+      "term": "epithelioid sarcoma",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 336
+    },
+    {
+      "term": "epithelioid sarcoma",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 3
+    },
+    {
+      "term": "epithelioid sarcoma",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 197
+    },
+    {
+      "term": "desmoid",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 2 条记录。",
+      "result_count": 2,
+      "upstream_reported_total": 2,
+      "rows_returned": 2,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 4140
+    },
+    {
+      "term": "desmoid",
+      "source": "chictr_online",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本次在线查询无命中；结果依赖短期会话与缓存。",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 14508
+    },
+    {
+      "term": "desmoid",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 255
+    },
+    {
+      "term": "desmoid",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "desmoid",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 162
+    },
+    {
+      "term": "GIST",
+      "source": "ctv",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 9 条记录。",
+      "result_count": 9,
+      "upstream_reported_total": 9,
+      "rows_returned": 9,
+      "truncated": false,
+      "warnings": [
+        "结果来自本地子集索引（覆盖 1434 条，其中 1434 条有完整详情），不代表 ctv.veeva.com 全集。"
+      ],
+      "elapsed_ms": 3121
+    },
+    {
+      "term": "GIST",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 10 条记录。",
+      "result_count": 10,
+      "upstream_reported_total": null,
+      "rows_returned": 10,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 12501
+    },
+    {
+      "term": "GIST",
+      "source": "chinadrugtrials",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 48 条记录。",
+      "result_count": 48,
+      "upstream_reported_total": 48,
+      "rows_returned": 48,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 524
+    },
+    {
+      "term": "GIST",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 0
+    },
+    {
+      "term": "GIST",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 137
+    },
+    {
+      "term": "软组织肉瘤",
+      "source": "ctv",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地 SQLite/FTS 索引未命中，不代表 ClinicalTrials.gov 上不存在该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "本地索引中 0 命中：该索引只覆盖 1434 条研究（其中 1434 条有完整详情），0 命中不等于没有相关试验。关键词检索请优先用 ClinicalTrials.gov；也可按 UTN/NCT/slug 用 get_study_detail 直查，或用 import_csv_export / sync_sitemap 扩大覆盖后再检索。"
+      ],
+      "elapsed_ms": 2836
+    },
+    {
+      "term": "软组织肉瘤",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 10 条记录。",
+      "result_count": 10,
+      "upstream_reported_total": null,
+      "rows_returned": 10,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 13196
+    },
+    {
+      "term": "软组织肉瘤",
+      "source": "chinadrugtrials",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 37 条记录。",
+      "result_count": 37,
+      "upstream_reported_total": 37,
+      "rows_returned": 37,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 476
+    },
+    {
+      "term": "软组织肉瘤",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "软组织肉瘤",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 140
+    },
+    {
+      "term": "肉瘤",
+      "source": "ctv",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地 SQLite/FTS 索引未命中，不代表 ClinicalTrials.gov 上不存在该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "本地索引中 0 命中：该索引只覆盖 1434 条研究（其中 1434 条有完整详情），0 命中不等于没有相关试验。关键词检索请优先用 ClinicalTrials.gov；也可按 UTN/NCT/slug 用 get_study_detail 直查，或用 import_csv_export / sync_sitemap 扩大覆盖后再检索。"
+      ],
+      "elapsed_ms": 3075
+    },
+    {
+      "term": "肉瘤",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 10 条记录。",
+      "result_count": 10,
+      "upstream_reported_total": null,
+      "rows_returned": 10,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 11573
+    },
+    {
+      "term": "肉瘤",
+      "source": "chinadrugtrials",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 86 条记录。",
+      "result_count": 86,
+      "upstream_reported_total": 86,
+      "rows_returned": 86,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 829
+    },
+    {
+      "term": "肉瘤",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "肉瘤",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 2 条记录。",
+      "result_count": 2,
+      "upstream_reported_total": 139,
+      "rows_returned": 2,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 143
+    },
+    {
+      "term": "脂肪肉瘤",
+      "source": "ctv",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地 SQLite/FTS 索引未命中，不代表 ClinicalTrials.gov 上不存在该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "本地索引中 0 命中：该索引只覆盖 1434 条研究（其中 1434 条有完整详情），0 命中不等于没有相关试验。关键词检索请优先用 ClinicalTrials.gov；也可按 UTN/NCT/slug 用 get_study_detail 直查，或用 import_csv_export / sync_sitemap 扩大覆盖后再检索。"
+      ],
+      "elapsed_ms": 3422
+    },
+    {
+      "term": "脂肪肉瘤",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 3 条记录。",
+      "result_count": 3,
+      "upstream_reported_total": null,
+      "rows_returned": 3,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 12224
+    },
+    {
+      "term": "脂肪肉瘤",
+      "source": "chinadrugtrials",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 3 条记录。",
+      "result_count": 3,
+      "upstream_reported_total": 3,
+      "rows_returned": 3,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 278
+    },
+    {
+      "term": "脂肪肉瘤",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "脂肪肉瘤",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 140
+    },
+    {
+      "term": "平滑肌肉瘤",
+      "source": "ctv",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地 SQLite/FTS 索引未命中，不代表 ClinicalTrials.gov 上不存在该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "本地索引中 0 命中：该索引只覆盖 1434 条研究（其中 1434 条有完整详情），0 命中不等于没有相关试验。关键词检索请优先用 ClinicalTrials.gov；也可按 UTN/NCT/slug 用 get_study_detail 直查，或用 import_csv_export / sync_sitemap 扩大覆盖后再检索。"
+      ],
+      "elapsed_ms": 3136
+    },
+    {
+      "term": "平滑肌肉瘤",
+      "source": "chictr_online",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本次在线查询无命中；结果依赖短期会话与缓存。",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 12963
+    },
+    {
+      "term": "平滑肌肉瘤",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 307
+    },
+    {
+      "term": "平滑肌肉瘤",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "平滑肌肉瘤",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 154
+    },
+    {
+      "term": "滑膜肉瘤",
+      "source": "ctv",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地 SQLite/FTS 索引未命中，不代表 ClinicalTrials.gov 上不存在该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "本地索引中 0 命中：该索引只覆盖 1434 条研究（其中 1434 条有完整详情），0 命中不等于没有相关试验。关键词检索请优先用 ClinicalTrials.gov；也可按 UTN/NCT/slug 用 get_study_detail 直查，或用 import_csv_export / sync_sitemap 扩大覆盖后再检索。"
+      ],
+      "elapsed_ms": 3137
+    },
+    {
+      "term": "滑膜肉瘤",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 1 条记录。",
+      "result_count": 1,
+      "upstream_reported_total": null,
+      "rows_returned": 1,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 12145
+    },
+    {
+      "term": "滑膜肉瘤",
+      "source": "chinadrugtrials",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地受控归档中无该关键词命中，不代表官网无该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "ChinaDrugTrials 结果表格为空；已确认检索执行，但未命中任何记录。"
+      ],
+      "elapsed_ms": 315
+    },
+    {
+      "term": "滑膜肉瘤",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "滑膜肉瘤",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 165
+    },
+    {
+      "term": "横纹肌肉瘤",
+      "source": "ctv",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地 SQLite/FTS 索引未命中，不代表 ClinicalTrials.gov 上不存在该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "本地索引中 0 命中：该索引只覆盖 1434 条研究（其中 1434 条有完整详情），0 命中不等于没有相关试验。关键词检索请优先用 ClinicalTrials.gov；也可按 UTN/NCT/slug 用 get_study_detail 直查，或用 import_csv_export / sync_sitemap 扩大覆盖后再检索。"
+      ],
+      "elapsed_ms": 3327
+    },
+    {
+      "term": "横纹肌肉瘤",
+      "source": "chictr_online",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本次在线查询无命中；结果依赖短期会话与缓存。",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 12059
+    },
+    {
+      "term": "横纹肌肉瘤",
+      "source": "chinadrugtrials",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 2 条记录。",
+      "result_count": 2,
+      "upstream_reported_total": 2,
+      "rows_returned": 2,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 273
+    },
+    {
+      "term": "横纹肌肉瘤",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 2
+    },
+    {
+      "term": "横纹肌肉瘤",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 152
+    },
+    {
+      "term": "血管肉瘤",
+      "source": "ctv",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地 SQLite/FTS 索引未命中，不代表 ClinicalTrials.gov 上不存在该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "本地索引中 0 命中：该索引只覆盖 1434 条研究（其中 1434 条有完整详情），0 命中不等于没有相关试验。关键词检索请优先用 ClinicalTrials.gov；也可按 UTN/NCT/slug 用 get_study_detail 直查，或用 import_csv_export / sync_sitemap 扩大覆盖后再检索。"
+      ],
+      "elapsed_ms": 3237
+    },
+    {
+      "term": "血管肉瘤",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 2 条记录。",
+      "result_count": 2,
+      "upstream_reported_total": null,
+      "rows_returned": 2,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 10425
+    },
+    {
+      "term": "血管肉瘤",
+      "source": "chinadrugtrials",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 1 条记录。",
+      "result_count": 1,
+      "upstream_reported_total": 1,
+      "rows_returned": 1,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 283
+    },
+    {
+      "term": "血管肉瘤",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 2
+    },
+    {
+      "term": "血管肉瘤",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 146
+    },
+    {
+      "term": "纤维肉瘤",
+      "source": "ctv",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地 SQLite/FTS 索引未命中，不代表 ClinicalTrials.gov 上不存在该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "本地索引中 0 命中：该索引只覆盖 1434 条研究（其中 1434 条有完整详情），0 命中不等于没有相关试验。关键词检索请优先用 ClinicalTrials.gov；也可按 UTN/NCT/slug 用 get_study_detail 直查，或用 import_csv_export / sync_sitemap 扩大覆盖后再检索。"
+      ],
+      "elapsed_ms": 2855
+    },
+    {
+      "term": "纤维肉瘤",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 2 条记录。",
+      "result_count": 2,
+      "upstream_reported_total": null,
+      "rows_returned": 2,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 13598
+    },
+    {
+      "term": "纤维肉瘤",
+      "source": "chinadrugtrials",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 1 条记录。",
+      "result_count": 1,
+      "upstream_reported_total": 1,
+      "rows_returned": 1,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 333
+    },
+    {
+      "term": "纤维肉瘤",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 2
+    },
+    {
+      "term": "纤维肉瘤",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 143
+    },
+    {
+      "term": "上皮样肉瘤",
+      "source": "ctv",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示本地 SQLite/FTS 索引未命中，不代表 ClinicalTrials.gov 上不存在该试验。",
+      "result_count": 0,
+      "upstream_reported_total": 0,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "本地索引中 0 命中：该索引只覆盖 1434 条研究（其中 1434 条有完整详情），0 命中不等于没有相关试验。关键词检索请优先用 ClinicalTrials.gov；也可按 UTN/NCT/slug 用 get_study_detail 直查，或用 import_csv_export / sync_sitemap 扩大覆盖后再检索。"
+      ],
+      "elapsed_ms": 3116
+    },
+    {
+      "term": "上皮样肉瘤",
+      "source": "chictr_online",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 1 条记录。",
+      "result_count": 1,
+      "upstream_reported_total": null,
+      "rows_returned": 1,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 9331
+    },
+    {
+      "term": "上皮样肉瘤",
+      "source": "chinadrugtrials",
+      "state": "SUCCESS",
+      "reason_code": "OK",
+      "explanation": "来源返回 1 条记录。",
+      "result_count": 1,
+      "upstream_reported_total": 1,
+      "rows_returned": 1,
+      "truncated": false,
+      "warnings": [],
+      "elapsed_ms": 306
+    },
+    {
+      "term": "上皮样肉瘤",
+      "source": "chictr_pancreatic_archive",
+      "state": "NEEDS_SETUP",
+      "reason_code": "PATH_MISSING",
+      "explanation": "路径不存在：/nonexistent/x.db",
+      "result_count": 0,
+      "upstream_reported_total": null,
+      "rows_returned": null,
+      "truncated": null,
+      "warnings": [],
+      "elapsed_ms": 1
+    },
+    {
+      "term": "上皮样肉瘤",
+      "source": "xyb_chinadrugtrials_archive",
+      "state": "NO_RESULTS",
+      "reason_code": "EMPTY_RESULT_SET",
+      "explanation": "仅表示该离线数据包内无命中；本包是按关键词抓取的子集，不是全量 ChinaDrugTrials，也不包含数据截止日之后登记的试验。",
+      "result_count": 0,
+      "upstream_reported_total": 139,
+      "rows_returned": 0,
+      "truncated": false,
+      "warnings": [
+        "已跳过 2 个不可用数据包：B7-H3_CD276_招募中（缺少 summary.json 清单，视为未完成的采集快照）；FG-M108（缺少 summary.json 清单，视为未完成的采集快照）。这些包内的记录未纳入本次检索。",
+        "本数据包数据截止 2026-09-29，记录抓取时间跨度为 2026-08-14 至 2026-09-29；该日期之后登记的试验在包内不可见，零结果不能证明不存在。数据包由小胰宝社区共同维护，可用 doctor 查看并更新。",
+        "packages_skipped:2"
+      ],
+      "elapsed_ms": 236
+    }
+  ],
+  "window_excluded": [],
+  "files": [
+    {
+      "path": "research/sarcoma/trials-2026.jsonl",
+      "sha256": "47bea3350bacb8f4cd40fc7cacc01bfc69d2173b366bce33c7cb08e742e3de80",
+      "bytes": 525545,
+      "rows": 263
+    },
+    {
+      "path": "research/sarcoma/sarcoma_cancer_trials_2026.sqlite",
+      "sha256": "6f650ff4037a43530d97dd5e466e66b9ee7dc113b98296066952c00e0b9c431c",
+      "bytes": 610304,
+      "tables": [
+        "trials",
+        "source_status"
+      ]
+    },
+    {
+      "path": "scripts/fetch-sarcoma-trials-2026.mjs",
+      "sha256": "f469151b1030cfeb25abcb3d5cd6a5f68343b91498d2c6983548bb7c49a08ef4",
+      "bytes": 30635
+    }
+  ],
+  "sqlite_verification": {
+    "by_source": [
+      {
+        "source": "chictr_online",
+        "n": 32
+      },
+      {
+        "source": "chinadrugtrials",
+        "n": 134
+      },
+      {
+        "source": "ctv",
+        "n": 95
+      },
+      {
+        "source": "xyb_chinadrugtrials_archive",
+        "n": 2
+      }
+    ],
+    "total": 263
+  },
+  "reproducibility": {
+    "command": "node scripts/fetch-sarcoma-trials-2026.mjs",
+    "note": "在线结果会随时间变化；manifest 记录本次生成时间、doctor 快照与每个词/通道的终态，便于判断差异来自数据更新还是通道故障。"
+  },
+  "limitations": [
+    "ICTRP 通道本次不可用（sidecar FileNotFoundError），不能把其 0 条解读为“无试验”。",
+    "ChiCTR 胰腺癌离线语料路径不存在，且设计上只覆盖胰腺癌，对肉瘤无覆盖。",
+    "XYB ChinaDrugTrials 离线包只有胰腺癌 139 条，对肉瘤无覆盖；命中记录为偶然字样，不作为覆盖依据。",
+    "CTV 是本地索引，零命中只代表本地索引未命中，不代表 ClinicalTrials.gov 全量无该试验。",
+    "ChiCTR 在线单次最多 100 条且无分页参数；若某词命中超过 100 条，只能记录截断。",
+    "enrollment 列本次留空：search_trials 的 canonical 记录不含入组数；如需该字段须逐条调用 get_trial_detail。"
+  ]
+}

@@ -1,8 +1,8 @@
-/* HTTP 层：把 public/ 以静态文件方式挂出去（装机界面）。
+/* HTTP 层（2026-10-27 补）：把 public/ 以静态文件方式挂出去。
  *
- * 为什么需要它：本仓原先只注册了 /health，外壳里没有可加载的业务页，
- * 装进 Desktop 后面板只剩占位卡片 / 空白。现在业务界面 = public/（由
- * scripts/build-public.mjs 从 prototypes/v0.2 产出），外壳用 iframe 装进面板。
+ * 为什么需要它：本仓原先只注册了 /health，外壳（lib/client.js）自己在画业务卡片，
+ * 结果是"装了以后只有骨架、原型页面永远发不到用户面前"。
+ * 现在业务界面 = public/（原型提升而来），外壳用 iframe 装进面板。
  *
  * 边界：只从 public/ 出文件；`..`、绝对路径、符号链接逃逸一律拒绝；错误走纯文本 404。
  */
@@ -41,15 +41,15 @@ export function resolveStatic(root, urlPath) {
   return absReal
 }
 
-/** 生成 {kind:'prefix'} 路由的 handler：宿主传完整 req.url，这里按 UI_ENTRY 剥前缀。 */
-export function createStaticHandler(publicDir, uiEntry) {
+/** 生成 {kind:'prefix'} 路由的 handler：prefix 已在宿主侧剥掉，传入的是剩余路径。 */
+export function createStaticHandler(publicDir, prefix) {
   return function handler(req, res, next) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8' })
       return res.end('Method not allowed')
     }
     const url = String(req.url || '/')
-    const rel = url.startsWith(uiEntry) ? url.slice(uiEntry.length) : url
+    const rel = url.startsWith(prefix) ? url.slice(prefix.length) : url
     const file = resolveStatic(publicDir, rel)
     if (!file) {
       if (typeof next === 'function') return next()

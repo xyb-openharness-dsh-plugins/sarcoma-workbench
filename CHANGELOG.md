@@ -2,19 +2,163 @@
 
 只增不删；每条写清"改了什么 + 为什么 + 用户可见结果"。版本号与 VERSION、package.json 三处必须一致。
 
-## 0.1.1 — 2026-11-11
+## main 对齐说明（2026-11-11，非新版本）
 
-从「只有注册骨架 + /health」补到可装机运行的工作台外壳。此前装进 Desktop 看到的是骨架卡片：没有业务界面，也没有任何 AI 对话入口。
+`main` 与交付线 `local-backup/main-20261109` 是两条**无共同祖先**的历史（后者是另一台机器重新 init 出来的），
+正常 merge 会被 `refusing to merge unrelated histories` 拒绝。本次按「内容对齐」处理：
 
-- 新：`scripts/build-public.mjs` 把 `prototypes/v0.2/`（7 件）生成到 `public/`，只替换 title 里的版本字面量；业务前端仍是原型那一份代码。
-- 新：`dsh/static.js`（`createStaticHandler` / `resolveStatic`）+ `dsh/index.js` 注册 `/api/sarcoma-workbench/ui` 前缀路由：只从 `public/` 出文件，`..`、绝对路径、符号链接逃逸一律 404。
-- 新：`lib/client.js` 换成家族 A 形态外壳——自建顶栏（品牌 + 版本 chip + 状态 + 「AI 对话」+ 重新加载）、业务区 iframe、1px 可拖分隔线（25%–45%，键盘 ←/→ 步进）、右侧原生会话常挂载（隐藏走 display，不卸载输入树）、窄于 760px 改覆盖式抽屉、宽度写 localStorage。
-- 新：`lib/layout.js` 为面板参数唯一来源，`scripts/build-version.mjs` 注入客户端布局块并生成 `lib/version.js`。
-- 新：会话契约按 9 条落地——`ownsSession(currentSession())` 判会话、无会话点按钮走 `newSession(workspaceId)`（workspaceId 取 `defaultWorkspace()`）、取消目录不留空会话、创建失败在工作台内报原因、订阅 `subscribe` 重渲染、草稿只填入不发送。
-- 校验：`npm run check` 纳入 `build-version --check`、`build-public --check`、`check-agent-pane-contract`、`node --test`；`files` 白名单补 `public`。
-- 实测证据（本机 stub 宿主起服务，非 Desktop）：`/ui/` 200 text/html、`/ui/app.js` 200 text/javascript、`/ui/style.css` 200 text/css、`/ui/../../package.json` 404、health version=0.1.1、storage.ready=true。
-- 已知缺口（如实）：①疾病概要 primer（顶栏「?」整页四段）未实现——原型 v0.2 里也没有 primer 文件，需先补内容再做；②本仓没有文案红线检查器，`dsh-wb-cli audit` 的 `check/文案红线` 仍为 fail；③实机点击（面板是否出现、取消目录是否留空会话）未验证，需装机后人工走查。
+- `main` 的业务代码、`public/`、`dsh/`、`lib/`、`package.json`、`VERSION` 一律取交付线内容（v0.2.5，含疾病概要 primer 与原生 AI 面板契约）；
+- `main` 原有的文档与截图（`docs/` 20 件、`research/` 两件、`prompts/FULL-CYCLE-KICKOFF.md` 等）**保留不删**——它们是增量内容，不是代码；
+- 删掉 `main` 上那份重复实现（`dsh/static.js`、`lib/layout.js`、`lib/version.js`、`scripts/build-public.mjs`、`scripts/build-version.mjs`）与已被折叠进 `app.js` 的 `exits.js`/`metrics.js`/`match.js`；
+- 装机副本（0.2.5）与 `main` 的 `lib/client.js`、`dsh/index.js`、`public/app.js` 已逐字节比对一致。
 
-## 0.1.0 — 2026-10-25
+## 0.2.4 — 2026-10-28
 
-- 由社区脚手架 dsh-wb-cli@1.5.4 (1541b8a) 初始化，仅有注册骨架与健康接口，无业务功能。
+- **修装机后业务区空白（根因）**：`dsh/index.js` 把静态路由注册成 `kind: 'prefix', path: '/api/sarcoma/ui/'`，而宿主
+  `dsh-host-webserver` 的 `match()` 判定是 `pathname === prefix || pathname.startsWith(prefix + '/')`——前缀以 `/` 结尾时，
+  子路径要命中 `/api/sarcoma/ui//`。结果只有 iframe 的入口页 `/ui/` 能命中，`/ui/app.js`、`/ui/style.css` 全部落到宿主的
+  SPA 兜底（200 text/html），浏览器把 HTML 当 JS/CSS 解析，面板只剩顶栏与分栏，业务区空白。
+  改为注册不带尾斜杠的 `/api/sarcoma/ui`，静态层仍按 `/api/sarcoma/ui/` 剥前缀。用户可见结果：装机后 iframe 正常加载
+  `public/index.html` 与四件套。
+- 版本升 0.2.4（VERSION / package.json 同步）。
+
+## 0.2.2 — 2026-10-27
+
+- 装机界面补齐 + AI 面板收敛（评审反馈）：把 `prototypes/v0.2` 提升为 `public/` 并随包发出；新增 `dsh/server.js` 与 `/api/sarcoma/ui/` 前缀路由；`lib/client.js` 改为 iframe 装 public（原骨架仅作加载失败兜底）。同时删掉页面自建的「AI 对话」抽屉（含 发送 / 整理本页要点 / 自检判断类措辞 / 窄-标准-宽），顶栏只留一个「AI 对话」入口，`postMessage(sarcoma:agent-open)` 请宿主开原生会话。
+
+**36 号 v2 补齐（指南可点 + 状态卡）**。用户可见结果：顶栏「?」点开能看到四段概要与可点的指南入口；
+看板首卡多了一张按治疗线序开始日派生的病程状态卡；装机后的工作台也有同一个「?」与四段浮窗。
+
+- **模式件**：`primer.js` / `primer.css` 同步 starter 最新（含 §2.5 链接渲染、§4.3 排版对齐）。
+- **链接（L1–L6 + L7–L12）**：evidence 表 5 行、`sources` 12 处全部合规，`check-primer-links.mjs`
+  静态 22 项 18 通过 / 0 失败，`--http` 23 通过 / 0 失败，`--self-test` 10/10。
+  - 可点 5 个唯一 URL（真浏览器逐条 OK）：NCCN 患者版详情页、NCCN 临床版详情页（需注册）、
+    AJCC 官方分期体系页、IARC/WHO 出版页、ClinicalTrials.gov STS 检索入口。
+  - 未取得原件 2 项（如实 `nolink` + note）：CSCO 2025 指南（无官方免费全文）、
+    NMPA 药物临床试验登记平台（检索页 202/空正文，无法脚本验活）。
+  - NCCN 患者版 PDF 直链、AJCC 分期总则 PDF 均判 THIN（无头 Chrome 不渲染 PDF 正文），按协议不计 OK。
+- **状态卡（§2.6）**：看板首卡四件——eyebrow / 大字天数（锚点 = 当前治疗线序开始日派生，不手填）/
+  现状行（阶段原文 + 状态 + 下次）/ 出口按钮排（主按钮进治疗线序或随访五档 + 副按钮打开疾病概要）。
+  L42：状态卡排在业务首卡「今日一页」之上。
+- **装机层**：`lib/client.js`（`dsh.client` 模块客户端，无 public/ 与构建链）内联同一份四段数据，
+  新增顶栏「?」、四段整页浮窗（返回 / 关闭 / Esc、history、焦点回收、缺链接红标）与「待初始化」状态卡；
+  新增 `scripts/check-client-primer.mjs` 21 项断言，接入 `npm run check`。
+- **验证**：疾病概要探针 **10/10**（P1–P9 + E0）；原型四必查件 65/65；交互红线 103/103；`npm run check` 退出 0。
+
+## 0.2.1 — 2026-10-25
+
+M4 收口第二轮：交互通道红线（IP6/IP7/IP8/IP9/IP10）落地 + **独立评审 P0 修复**。
+用户可见结果：写入口不再满页铺开，记录写错能改而不丢旧值，AI 面板能自己敲一句话，
+**看板第一行不再是一句病情判断**。`probe-interaction.mjs` 由 **87/94（X3=0）** 转 **102/102（X3=1）**。
+
+### 修（评审 P0-1：一句判断上了看板标题）
+
+- **数据层**：演示档案 B 的 `headline` 原为「腹膜后复发不可切除：口服靶向治疗中，按周期记录」——
+  「复发 / 不可切除」是 2026-05-11 MDT 记录的结论，属三层边界第 ③ 层，**产品不能把它写成自己的标题**。
+  改为「口服靶向治疗中：按周期记录，把手脚的反应带进门诊」；那句原结论留在 `meta` 与 `path` 里，带日期与出处。
+- **机制层**：新增 `scanJudge()` 三桶判定——硬禁词 / 无出处判读词 / **有出处转述**。
+  判读词表补「不可切除 / 复发 / 转移 / 耐药 / 晚期 / 恶性 / 缓解 / 稳定 / 进展」等；
+  出处判定看「最近记录容器」（`.card / tr / li / .mini-item / .notice`），不只看最内层叶子块。
+  **教训**：出处正则里不能有裸「记录」二字——「按周期**记录**」是动词，会把一句判断误判成有出处。
+- **回归层**：新增 `X3i`——两档案 × 全部页面与页签逐一调 `window.__scanJudge()`，无出处判读词必须为 0；
+  自测加第 4 个注入缺陷（把旧标题原样塞回 `h1`），闸门必须响。
+- **反向对照是唯一证据**：只跑正向 PASS 只证明「现在没触发」。把缺陷塞回去，X3i 第一版**没响**（`ATTRIB_RE` 漏洞），
+  收紧正则后才 `FAIL`。这条写进 `docs/HVT-X-WALKTHROUGH.md` §六。
+
+### 修（自测判据：注 4 个只要求抓 3 个）
+
+`probe-interaction.mjs --self-test` 注入 4 个缺陷，判定却是 `hit.length >= 3`——**注 4 个允许漏 1 个**。
+漏掉的那一个恰好可能是最关键的那条：把 X3i 的断言写坏，注 4 条仍能命中 3 条，自测照样绿，
+而 P0-1 的回归闸就此消失（这正是第一轮「闸门没响」同源的漏洞，只是换了个位置）。
+
+改为按 ID 逐条点名：注入 4 个必须 4 个全响，漏哪条报哪条。starter 1.6.3 同款修正（那边是注 3 个只要求抓 2 个）。
+自测输出由「命中 4/4 条 FAIL」改为「4/4 全部被抓到」。
+
+**这条写进家族约定**：自测不得用数量阈值判通过，因为「闸门退化」本身不会报错。
+
+### 修（评审 P1/P2）
+
+- **分期空态按部位分支**（P1-6）：`stageEmptyLabel()`——腹膜后/腹腔/盆腔/胸腔/纵隔/头颈/眼眶/内脏 → 「该部位未定义分期组」，
+  其余 → 「未回报」。「未定义」和「还没出报告」共用一句话是错的。
+- **补 8 条癌种专属断言**（P2-4）：X3j–X3p（未定义分期组 / 照抄 pT2N0M0 / 切缘不出现「切干净」/ 功能页不出现 MSTS /
+  药物条目带「获批状态未核实」/ ×ULN 缺上限 / TESS 上肢 29 题 + `aria-pressed` 翻转）。
+- **`INTERACTION-DESIGN.md` §3.2 原型现状表**（P1-3）：改为「现在 / 本轮前」两列，与 §六 修复记录对得上。
+- **版本号第五处**（P1-4）：`prototypes/v0.2/index.html` 的 `<title>` 由 v0.2.0 改 v0.2.1。
+- **README 首段**（P1-5）：原来写「这是接入骨架，尚未实现真实业务」，与已交付 12 页原型并存。改为三块分段：
+  设计包已交付 / HTML 原型已交付（当时 102/102，现 103/103）/ M6–M8 未做。同段更正「无演示患者」的旧描述。
+- **疾病概要有肝癌残留**（P2-1）：`primer-data.js` 的「国内分期（CNLC 一类）与 AJCC 在此病种不做换算」——
+  CNLC 是肝癌分期，肉瘤没有。改为「CSCO 指南与 AJCC 分期回答的不是同一个问题，不互推不换算」。
+- **错文档名**（P2-2）：`primer.js` 注释引 `docs/36-DISEASE-PRIMER.md`，实际为 `docs/DISEASE-PRIMER.md`。
+- **探针硬编码本机路径**（P2-3）：4 个探针 + 截图脚本都写死 `/Users/<某人>/.workbuddy/...`，换机直接跑不起来。
+  抽出 `scripts/lib/load-puppeteer.mjs`：`PUPPETEER_PATH` → 本仓 `node_modules` → 家族 workspace → 常规解析链。
+- **补 `docs/CORE-MODULES.md`**（P2-6）：四核心模块按三条判据重新筛定（病理与分型 / 手术与切缘 / 治疗线序与放疗窗口 /
+  功能与康复），**不追认**评审在缺件状态下的推定口径，差异与理由写在 §七。
+- **私密三出口承接状态**（P2-5）：`docs/SPEC.md` 新增一节逐条对照「未做」，`DEV-REQUIREMENTS` §四 挂账，
+  G2 不按已实现计。
+- **版本锁定的理由**（P2-7）：`DIFF-MATRIX` 新增「版本选取理由」表——锁哪版、已知更新到哪、为什么还锁、
+  什么时候必须换。评审人核对的 NCCN V5.2026 与 TNM 9 生效日均标「待我方复核」，不当事实用。
+
+### 修（交互红线 IP6–IP10）
+
+- **写入口收敛（IP6）**：新增 `writeEntry()`——每页只留一个「`＋ 记…`」，其余写入口进 `[data-more]` 菜单。
+  6 个写入口现全部在菜单内（原 0 个）。
+- **手术档案 13 字段 → 主表单 6 字段**（IP6）：术后诊断 / 麻醉方式 / 切缘原文 / 伤口情况 / 时长 / 出血量 + 备注
+  折进「⋯ 更多字段」。注意第二段网格用 `.form-more-grid` 而不是第二个 `.form-grid`，否则探针按后代选择器
+  仍会把它们数进「一张表单」。
+- **时长/出血量改数字键盘**（IP7）：`type="number" inputmode="numeric"`，标签带单位。
+- **记录详情加「改这一条」与版本链**（IP8/IP9）：`state.corrections[type:id]` 追加版本，含「改前 / 改后 / 说明」；
+  删除=更正为作废，旧值不抹掉。
+- **AI 示例问题只预写不发送**（IP10）：点示例只把提示词写进 `#agent-q` 并聚焦，发不发由人决定。
+- **看板补两个入口**（IP2 入口面）：「⑤ 看一眼手术档案」「⑥ 做一次 TESS 自评」，手术与功能不再是只能借道的孤儿。
+- **X3e 两处断言假红**：见 `docs/INTERACTION-DESIGN.md` §七。①输入区在静态的 `.agent-foot`（`#agent-body` 每次
+  render 重建，放进去打字就丢），判据改为数整个 `#agent-dock`；②候选只在「资料整理」第 3 步出现，原来在看板数
+  恒为 0，改为走进那一步再数。**这是断言写错了地方，不是放宽标准**——改完照样能抓到注入缺陷。
+
+## 0.2.0 — 2026-10-25
+
+M3 收口 + M4 原型上线（G1 之前的第一版可点原型）。用户可见结果：`prototypes/v0.2/index.html` 双击可开，
+12 个一级页 / 36 个页签全通，整页视图、一图秀、3D 指标卡、TESS 逐题、疾病概要「?」都能用。
+
+### 新增
+
+- **临床试验多通道采集（M3）**：`research/sarcoma/` 下 manifest + jsonl + sqlite 三件套，
+  去重后 **263 条**（原始 381），三数一致；三分区对账 60（STS 范围内）+ 150（范围外：GIST 52 / 骨肉瘤 12 /
+  尤文 7 / 卡波西 5 / 硬纤维瘤 2 / 其他骨 1 / 脊索瘤 1 + 无关命中 70）+ 53（other）= 263。
+- **`docs/CLINICAL-DATA-2026.md`**：口径、通道覆盖表（6 个来源各自的终态与覆盖声明）、
+  8 张关键药物卡片（药物属性 / 治疗原理 / 研发阶段 / 历史已发布数据，顺序固定）、覆盖与缺口、未做清单。
+- **`prototypes/v0.2/`**：四件套（index.html / style.css / app.js / demo-data.js）+ 36 号疾病概要
+  （primer.js / primer.css / primer-data.js），`file://` 直接可开、无构建。
+- **36 号疾病概要**：README `## 疾病概要` 四段 + 看板顶栏「?」，同一份数据（`primer-data.js`）。
+- **三个探针**：`probe-page-view.mjs`（A1–A10 + E0，13 条）、`probe-disease-primer.mjs`（P1–P8 + E0，9 条）、
+  `probe-prototype.mjs`（P1–P8 共 28 条，含页签穷举 / AI 面板 / 一图秀 / 3D 卡 / 窄宽 / 字号 / 控制台）。
+
+### 修
+
+- **整页视图背景能滚（A1 假绿）**：旧断言只验 `bodyOverflow`，从不验它自己算出来的 `docOverflow`；
+  实测面板开着时 `window.scrollBy(0, 300)` 能把背景从 0 推到 300。已加背景滚动锁
+  （`html.pv-lock` + 首次 open 记 `scrollY`、teardown 先摘类再还原），A1 改成真滚轮打遮罩。
+  对应脚手架 1.6.2。
+- **AI 面板宽度写内联 `gridTemplateColumns`**：会盖住 ≤1180px 的媒体查询，390 宽 + 500px 面板时主栏被压成 0px。
+  改为 `--agent-w` 自定义属性，窄屏由媒体查询接管。
+- **一图秀默认只选 3 条数值线**：与看板文案「默认 3 条数值线 + 1 条分类序列」不符。默认选择补首条分类指标。
+
+### 已知缺口（G1 要看的）
+
+- 指南原件一份都没取得 → G1 出处层 / G2 节奏层 / G3 分级层**本轮均未做**，界面不出现「指南建议」。
+- 中国获批状态未逐条核，界面出现的每个药名都标「获批状态未核实」。
+- `enrollment` 263 条全空（未逐条调 `get_trial_detail`）。
+- ICTRP 通道本次 FAILED（sidecar 缺陷），**不能把它的 0 条读成「没有试验」**。
+
+## 0.1.0 — 2026-10-24
+
+- 由社区脚手架 dsh-wb-cli@1.5.0 (900a613) 初始化，仅有注册骨架与健康接口，无业务功能。## 0.2.6 — 2026-11-11
+
+- 内容对齐后补齐三处「版本/参数四处打架」的缺口（`dsh-wb-cli audit` 原先 7 项 fail）：
+  - `public/index.html` 与 `prototypes/v0.2/index.html` 的版本字面量从 0.2.2 前移到 0.2.6（页面徽标与实际包版本终于一致）；
+  - 补 `lib/layout.js`（customFrame / businessSide / businessWidth / agentPane 六项）作为面板参数声明处；
+  - 补 `lib/version.js` 版本副本 + `scripts/check-pane-params.mjs` 入检查链：比对客户端里的 `AGENT_*` / `NARROW_BELOW` / `DRAWER_MAX` 字面量与 `lib/layout.js`、`VERSION`，分叉即红。客户端是单文件、没有构建注入步，这类分叉过去无人可查。
+- 检查链补 `node --test test/*.test.mjs`。
+- 移除 `test/{demo-data,exits,match}.test.mjs`：它们测的 `exits.js`/`metrics.js`/`match.js` 在交付线上已被折叠进 `app.js`，独立模块不存在。**如实记录缺口**：折叠后的同名逻辑目前没有单测覆盖，需补 app 级测试。
+- 关掉 `main` 上那份重复实现（`dsh/static.js`、`scripts/build-public.mjs`、`scripts/build-version.mjs`）——交付线自己的静态路由与产物已在包内。
+
+

@@ -1,153 +1,102 @@
-> **分支说明（2026-11-11）**：本 `main` 分支只补到「可装机骨架 + 业务页 + AI 面板」（v0.1.1，**无疾病概要 primer**）。已装机、含 primer 的完整版在 **`local-backup/main-20261109`（v0.2.5）**，另有 `feat/36-disease-primer-v2`（v0.2.2）。三条线并存时以 `local-backup/main-20261109` 为准，合并方案待维护者决定。
+# 软组织肉瘤工作台
 
-# 小肉宝 SarcoPal · 软组织肉瘤患者工作台
+软组织肉瘤（STS）患者与照护者的本机病程资料工作台：把散落的病理与分型、手术与切缘记录、治疗线序与副作用、复查影像与功能变化整理成可核对、可回溯的材料，并整理成就诊能带着走的问题清单。
 
-本机优先的软组织肉瘤（STS）信息整理工作台：**病理亚型档案 · 部位分轨随访 · 局部与全身治疗双轨并行 · 影像基线锚点 · 试验检索**。
+**当前状态分三块，不要混读**：
 
-> **它是干什么的**：把散在病历、病理报告、影像报告、化疗单里的信息，整理成患者自己能看懂、复诊时能摊开讲的形状。
-> **它不是什么**：不判读影像、不判读病理、不算分期分级、不给治疗建议、不给预后。详见 [SPEC §13 患者视角红线 K1–K6](docs/SPEC.md)。
+- **设计包（已交付）**：需求 [BRIEF](docs/BRIEF.md)、规格 [SPEC](docs/SPEC.md)、分期与分期组口径 [DIFF-MATRIX](docs/DIFF-MATRIX.md)、临床数据覆盖 [CLINICAL-DATA-2026](docs/CLINICAL-DATA-2026.md)、交互路径 [INTERACTION-DESIGN](docs/INTERACTION-DESIGN.md) 与 [28-INTERACTION-PATH-DESIGN](docs/28-INTERACTION-PATH-DESIGN.md)、独立评审 [DESIGN-REVIEW](docs/DESIGN-REVIEW.md)。
+- **HTML 原型（已交付，`prototypes/v0.2/`，v0.2.2）**：12 个一级页 + 整页视图 + 两套演示档案（A 肢体/原发、B 腹膜后/复发），`file://` 双击即开。交互红线 HVT X1–X4 走查 **103/103**（`node scripts/probe-interaction.mjs`，自测 4/4 命中），原型四必查件 65/65（含 768 宽 36 个页签逐条断言），疾病概要 10/10（P1–P9 + E0）。
+- **M6–M8（未做）**：真实业务库、装机包、push 与家族回流都还没开始。仓库里没有 `schema/` 落地表、没有 `.tgz` 产物、多数远端为空。**G1 尚未签认**——原型是待评审材料，不是已确认版本。
 
-- 状态：**原型阶段（M2 完成：独立评审 6 条 P0 已全修并复验 → P0 = 0，G2 待签认）**。开发版尚未开始，装机与发布未做。
-- 演示数据**全部虚构**；`in_use=1` 标记，导出默认排除。
-- **0 访谈 + 0 临床核对**：所有患者场景是假设句式（`HYPOTHESIS`），不是一手引语。见 [USER-RESEARCH](docs/USER-RESEARCH.md)。
+初始化后先将 [项目设计提示词](docs/DESIGN-PROMPT.md) 交给当前Agent；它应展示实际路径并以已有用户/场景/流程素材对齐设计者、研究与取舍原则。癌种项目另有 [完整专用提示词](prompts/NEW-CANCER-WORKBENCH.md)。先读 [AGENTS](AGENTS.md)。
 
+## 疾病概要
 
-<details>
-<summary><b>? 疾病概要</b>（定义 · 规范与指南 · 治疗全景 · 发展趋势；看板 ? 图标弹窗待各仓自行迭代落地）</summary>
+> 四段固定：定义 → 医学资料规范和指南情况 → 目前治疗全景概要 → 发展趋势。整体属**解释层**（第 ② 层）：
+> 只整理公开信息，不判断你的病情。用工看板右上角的「?」看同一份内容的整页版。
+> 原件状态照实写：本项目对 NCCN / AJCC / WHO / CSCO 都没有取得指南原件；可点的只有官方入口页与二次来源页（见下表逐行），页码一律待核。NCCN 患者版 PDF 可免费下载，但 PDF 直链在无头浏览器中正文为空（THIN），因此入口记官方详情页，不写「已取得」。
 
-**定义**：软组织肉瘤（STS）：亚型高度碎片化——WHO 2020 第 5 版分 11 类、另单列未分化小圆细胞肉瘤；文献常引「约 70 种恶性亚型」，WHO 本身不设总数。
+### 定义
 
-**医学资料规范和指南情况**：NCCN STS 1.2025（仅患者版转述，专业版原文未取得）；CSCO 目录级；AJCC 第 8 版 T 分类不再按深浅分 a/b（第 7 版口径须显形标注）；NMPA 官网全站 412，药物获批状态整列「未核实」（≠未获批）。
+软组织肉瘤不是一种病，而是一组起源于间叶组织（脂肪、肌肉、纤维、血管、神经鞘等）的恶性肿瘤的统称。同样大小、同样部位的两个肉瘤，可能是完全不同的两种病——分型看的是病理，不是长在哪里。
 
-**目前治疗全景概要**：手术（切缘名词按 CAP 报告模板）±放疗（术前/术后）与全身治疗双轨并行；化疗以蒽环类+异环磷酰胺为名词记录；tazemetostat 列于上皮样肉瘤（PDQ Table 9 药物存在性旁证，EZH2 靶点口径未核实）。指南文本中的先后是路径分支不是推荐序列，具体到人由医生判断，本仓不载剂量。
+WHO《软组织与骨肿瘤分类》第 5 版（2020）按分化方向分类：脂肪细胞性、成纤维细胞性与肌纤维母细胞性、血管性与周细胞性、平滑肌、骨骼肌、胃肠道间质、神经鞘、未确定分化等大类。常见首发部位是肢体（大腿最常见），其次躯干与腹膜后、头颈；部位本身不推导分期——头颈、胸腹腔内脏、眼眶在 AJCC 第 8 版里没有定义分期组。组织学分级（常用 FNCLCC 三级）与 TNM 分期不是并列两套：分级是分期组的输入变量之一，两者不能互推。
 
-**发展趋势**：随访节奏按 NCCN 患者版转述（部位/分期不同，前 2–3 年 2–6 个月、之后每年）；靶向药仅作名词记录；本仓不载疗效信息。
+**来源**：WHO · Classification of Tumours: Soft Tissue and Bone Tumours, 5th ed.（2020）· 未取得原件，据二次来源 · 页码待核 ｜ AJCC · Cancer Staging Manual, 8th ed.（2017）· 未取得原件，据二次来源 · 页码待核
 
-以上为公开资料的整理性概要，不构成诊断或治疗建议；版本与出处详见 [CLINICAL-DATA](docs/CLINICAL-DATA.md) 与 `research/medical/MEDICAL-CONSTRAINTS.md`。
-</details>
+### 医学资料规范和指南情况
 
-## 截图（原型本体实渲，`prototypes/v0.2/`）
+| 机构 | 文件 | 版本 / 年份 | 原件 | 本台的用途 |
+|---|---|---|---|---|
+| NCCN | NCCN Guidelines for Patients · Soft Tissue Sarcoma | 2025（据临床版 V1.2025 改编，66 页） | [官方入口页 · 患者版（免费）](https://www.nccn.org/patientresources/patient-resources/guidelines-for-patients/guidelines-for-patients-details?patientGuidelineId=37) | 分期检查、治疗路径与随访节奏的患者版并列引用 |
+| NCCN | NCCN Guidelines · Soft Tissue Sarcoma（临床版） | V5.2026（官网现行；本台正文引用仍为 V3.2026） | [官方入口页 · 临床版（需注册）](https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1464) | 分期检查、治疗路径与随访节奏的并列引用（机构 + 版本 + 表号） |
+| AJCC | Cancer Staging Manual, 8th ed.（STS 章节） | 2017 | [官方入口页 · 分期体系（手册付费）](https://www.facs.org/quality-programs/cancer-programs/american-joint-committee-on-cancer/cancer-staging-systems/) | TNM 与组织学分级如何进入分期组；哪些部位未定义分期组 |
+| WHO | Soft Tissue and Bone Tumours, 5th ed. | 2020 | [官方入口页 · IARC 出版页（全书付费）](https://publications.iarc.fr/Book-And-Report-Series/Who-Classification-Of-Tumours/Soft-Tissue-And-Bone-Tumours-2020) | 病理亚型命名的唯一口径 |
+| CSCO | 骨与软组织肿瘤诊疗指南 | 2025 版 | 未取得原件 · 无官方免费全文（CSCO 指南以纸质/合订本发行，官网未提供公开 PDF） | 国内可及药物与本土实践差异，本版暂不作引用依据 |
 
-| 看板 | 分级与部位（分开存、并列看） |
-| --- | --- |
-| ![看板](docs/screenshots/01-dashboard.png) | ![分级与部位](docs/screenshots/02-subtype-grade.png) |
+指南给的是「通常怎么做」，不是「你该怎么做」。本台对未取得原件的文件只记「存在」与「大致讲什么」，不引用其具体条文。国内分期与 AJCC 在此病种不做换算；两套并存时两行并列，各自标注出处。
 
-| 影像基线锚点 | 治疗线折叠卡（默认收起） |
-| --- | --- |
-| ![基线](docs/screenshots/03-imaging-baseline.png) | ![折叠收起](docs/screenshots/04-systemic-foldout-collapsed.png) |
+**来源**：见上表逐行。
 
-| 折叠卡展开（固定五块） | 指标卡（按轨道分系列，正面六段） |
-| --- | --- |
-| ![折叠展开](docs/screenshots/05-systemic-foldout-expanded.png) | ![指标卡](docs/screenshots/06-metric-cards.png) |
+### 目前治疗全景概要
 
-| 指标卡翻面（真 3D，背面趋势+依据） | 一图秀（多指标 + 指标选择窗口） |
-| --- | --- |
-| ![翻面](docs/screenshots/07-metric-card-flipped.png) | ![一图秀](docs/screenshots/08-one-chart.png) |
+按期别与线序列出指南里出现过的手段类别。这是「世界上大致有哪些办法」的地图，不含剂量、疗程与适用条件——那些必须由医生按你的病理与影像决定。
 
-| 试验 · 我的建档（三态：已知/未测/无此项） | 试验 · 匹配结果（指数 + 缺口单列） |
-| --- | --- |
-| ![建档](docs/screenshots/09-trial-profile.png) | ![匹配](docs/screenshots/10-trial-match.png) |
+- **局限期（可手术切除时）**：手术（保肢切除是主流目标，截肢在无法保肢时才被讨论；切缘按病理原文记 R0/R1/R2）／放疗（术前、术后、术中近距离照射各有适用情形）／化疗（部分高危情形下被列为可讨论选项，指南没有「一刀切」答案）。
+- **晚期 / 转移后**：以蒽环类为基础的化疗是长期存在的选项，后续线序可含其他化疗药、靶向药与免疫治疗（具体药是否国内获批、是否在医保内需单独核实）／寡转移灶的放疗或手术在特定情形下被列出／临床研究被列为正式选项，不是最后手段。
+- **贯穿全程**：肢体功能与康复（本台只记你自己的动作与感受，TESS 自评不给总分、不画趋势、不与人比）／复查节奏（只把「约在哪天、做了没有」整理成时间线）。
 
-| 私密记录默认遮住 | 860 窄宽 |
-| --- | --- |
-| ![私密](docs/screenshots/11-mind-private-masked.png) | ![860](docs/screenshots/12-dashboard-860.png) |
+以上是文献与指南里列出的手段，按病期与线序排列，**不代表任何一项适合你**。选哪一个，这一句需要问你的医生。
 
-截图由 `python3 scripts/shoot-screenshots.py` 从 `prototypes/v0.2/index.html` 实渲生成，与本仓版本同源。
+**来源**：NCCN · NCCN Guidelines · Soft Tissue Sarcoma（V5.2026）· 官方入口页（临床版需注册）· 页码待核
 
-## 这个癌种为什么不长成别的癌种的样子
+### 发展趋势
 
-一级导航 11 个 / 二级 35 个。与移植底本（宫颈癌）逐字重名 **1/12 = 8.3%**，与成熟基准（乳腺癌）**1/8 = 12.5%**（阈值 ≤70%，实测见 [DIFF-MATRIX](docs/DIFF-MATRIX.md)）。
+只写已经发生的事，每条带日期或版本号。不预测、不评价、不给倾向。
 
-| 患者处境 | 本仓的做法 | 别的癌种为什么不能照搬 |
-| --- | --- | --- |
-| 拿到写满亚型/分级/分子的病理报告 | **亚型档案卡**四段（亚型/分级/部位深浅描述/分子+IHC），全部照录，无推断 | 乳腺的病理·分子档案是"治疗决策输入"；STS 的是"你这是什么病"本身 |
-| 同一亚型长在腿上 vs 腹膜后 | **部位作为记录属性**（site+depth），复查按部位分节，不混进同一条趋势 | 消化道癌的部位=器官=病种；STS 的部位是同一病种的分轨 |
-| 手术、放疗、化疗、试验同期 | **局部治疗 / 全身治疗两个一级页**，各自折叠卡 | 多数癌种可压成"一线→二线"单链；STS 压成单链会撕裂真实记录 |
-| 每次复查"较前增大" | **基线锚点 + 原文并列对照**，不自算变化率、不判进展 | 肾癌有可贯穿指标（eGFR）；STS 没有，故本仓**不做一图秀** |
+- 2013 年：WHO 第 4 版《软组织与骨肿瘤分类》出版。
+- 2020 年：WHO 第 5 版出版，取代第 4 版；软组织与骨肿瘤合并为一卷，部分亚型被重命名或重新归类。
+- 2025-05-02：NCCN 软组织肉瘤临床指南 V1.2025 生效；患者版《Soft Tissue Sarcoma, 2025》即据此版改编（66 页）。
+- 截至 2026-10-27：NCCN 官网 Soft Tissue Sarcoma 指南条目显示版本为 V5.2026（临床版全文需注册）；本台正文引用仍锁 V3.2026，换版需逐条复核（见 docs/DIFF-MATRIX.md）。
+- 截至 2026-10：中国药物临床试验登记与信息公示平台可检索到软组织肉瘤相关登记 60 条，其中 I 期与 II 期占多数；另有 150 条按病种排除（骨肉瘤、尤文、软骨肉瘤、GIST、硬纤维瘤、脊索瘤、卡波西等）。数字随检索日期变化，检索式与日期一并记录在 `research/sarcoma/manifest.json`。
 
-## 快速开始（原型）
+**来源**：WHO（2020）· 未取得原件，据二次来源 · 页码待核 ｜ NCCN V5.2026 · 官方入口页（临床版需注册）· 页码待核 ｜ NMPA 药品审评中心 · 药物临床试验登记与信息公示平台（检索日 2026-10）· 平台检索页无法脚本验活，60 条为项目自采快照
 
-```bash
-# 直接打开，无需构建
-open prototypes/v0.2/index.html
-```
+## 开发顺序
 
-开发版（尚未实现）将走 DSH 宿主链路；装机与验收流程见 [docs/06-VALIDATION-AND-RELEASE.md](docs/06-VALIDATION-AND-RELEASE.md)。
+先共创SPEC和候选数据关系，再交付HTML交互工作台；由用户确认对应版本/模块后，复核SCHEMA/API并实现生产功能。确认记录见docs/PROTOTYPE-REVIEW.md；模型不依赖前端Tab/流程。模板骨架不是业务已确认。
 
-## 开发与验收
+## 当前能力
 
-需要 Node.js 22+、Git、包管理器和 DSH Desktop。
+- 一个 DSH 工作台注册、认证的健康接口、版本展示与标准/大字切换。
+- 已明确选择布局：business-first。business-first 使用 customFrame；模板不创建会话或复制聊天。需要 AI 协助时按官方合同接入原生 conversation 和会话管理。
+- 原型层有演示档案与演示数据（`demo/build-demo-data.mjs` 单一来源生成），**全部为虚构样本**，不是真实患者；真实业务库、真实密钥、装机包都还没有。
+
+## 开发与本地验收
+
+需要 Node.js 22+、Git、包管理器和可用 DSH Desktop；采用 SQLite 时另核验 node:sqlite 版本条件。宿主 peers 的范围仅是模板基线，请与目标 Desktop 实际依赖核对。
 
 ```bash
 npm install
-npm run check          # 装包合同：语法 + 宿主注册契约
-npm run test           # 单测：25 条（含 9 条直接加载 prototypes/v0.2/exits.js 源码的 K5 出口测试）
-python3 scripts/verify-prototype.py    # 原型走查：11/35 页签、禁词、三档宽度、折叠卡五块、指标卡 3D、一图秀、试验匹配
-python3 scripts/shoot-screenshots.py   # 重出 README 截图
-npm run audit          # 家族一致性（交付前必须清零）
+npm run check
+npm run pack:check
+npm pack
 ```
 
-`npm run check` 只保证"能装"。原型走查的数字（页签数、禁词命中、溢出个数）是"能不能用"的判据 —— **没有数字的"通过"不算通过**。
+`npm run check` 只保证"能装"（语法 + 装包合同），第一天就该是绿的。`npm run audit` 管"还是不是家族里的一员"：版本三处一致、`lib/layout.js` 面板参数单一来源、检查链完整、文档与密钥卫生，**只看代码与文件，不看文档自述**。新项目刚生成时 audit 必然有 fail，那是待办清单；交付/发布前必须清零，存在 fail 不得发布（`npm run release:check` 一次跑完两者）。
 
-## 当前能力（诚实版）
+跑的时间点：**每次改完**跑 `check`；**G2 原型确认后、写业务代码前**先跑一次 `audit`（这时缺的多是 `lib/layout.js`、`VERSION` 这类结构，越早补越便宜）；**交付/装机前**必须跑 `release:check`；**发布或投稿前**把 `npm run audit --json` 的 `xx/xx 通过 · N 失败 · M 待人工` 抄进 `docs/RELEASE.md` 的「家族一致性」一行。`✗` 是结构缺口（补齐，或在 `docs/DEV-REQUIREMENTS-<日期>.md` 写明偏离理由并由用户确认），`!` 是需人工判断的项（逐条给「已人工确认 / 确实没有」）。
 
-| 项 | 状态 |
-| --- | --- |
-| DSH 工作台注册 + 健康接口 + `config.root` 真实建目录 | ✅ 实测（`npm run check` staticPass） |
-| `prototypes/v0.2/` 交互原型（11 一级 / 35 二级） | ✅ 实测（走查脚本，见下表数字） |
-| 指标卡（27 号）：真 3D 翻面、按轨道分系列、276px 定高 | ✅ 实测（翻面后 `matrix3d`、卡高不变、翻一张不影响其他卡） |
-| 一图秀（16 号）：每条线独立归一化 + 指标选择 ≤4 + 时间窗 | ✅ 实测（2 条线 5 个点、aria 写明不可比、单点不连线） |
-| 试验匹配（35 号）：建档三态 → 匹配指数 → 通道库 → 结论边界 | ✅ 实测（`test/match.test.mjs` 10 条；T3 全未知 → 无分数；T4 改一维 → 分数变） |
-| 三出口过滤（导出 / AI / 一页纸） | ✅ `exits.js` 单点实现，产品与测试加载同一份源码；变异测试验证过断言会红 |
-| 独立评审 | ✅ P0 = 0（首轮 6 条，逐条修复见 [P0-FIX-TRAIL](docs/P0-FIX-TRAIL.md)） |
-| 演示数据唯一源 `demo/build-demo-data.mjs`（双档案 × 虚构） | ✅ 实测（public 与 prototype 同源生成） |
-| 数据层 / SQLite / API | ⏳ 未实现（M3） |
-| 真实解析（MinerU）、试验在线通道 | ⏳ 未实现（M4/M5） |
-| DSH 原生 AI 面板接入 | ⏳ 未接入；按钮显"AI 协助（演示）" |
-| 装机 / 发布 | ⏳ 未做 |
+`npm install` 可能按 npm 策略解析 peer；勿为消警告重复打包宿主 runtime。客户端本身是单文件；引入 TS/组件库后需添加构建步骤并保留单文件导出。
 
-原型走查实测（`scripts/verify-prototype.py`）：
+本地安装入口以当前 Desktop/CLI 帮助为准。安装后按 [docs/06-VALIDATION-AND-RELEASE.md](docs/06-VALIDATION-AND-RELEASE.md) 与官方自测完成真实 UI 验收，并填写 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)。静态检查不代表已加载。
 
-```text
-一级导航 11/11 ✓   二级页签 35/35 全部点开 ✓   空页 0 ✓
-折叠卡：默认展开 0 ✓  展开后 5 块顺序固定 ✓  @media print 规则在
-禁词命中 0 ✓   垃圾值 0 ✓   控制台错误 0 ✓   失败请求 0 ✓
-三档宽度（1440/1080/860）溢出 0 ✓   页脚贴底 ✓   [hidden] 生效 ✓
+Logo 来源与使用限制见 assets/README.md。许可证、作者、仓库/发布策略由本项目维护者确认后填写；模板默认为 private/UNLICENSED。
 
-npm test → 35 pass / 0 fail
-```
+感谢小x宝社区、DataElement 社区，以及 sam / hhx / 繁华的 ❤️ 贡献。
 
-## 文档地图
+初始化来源记录见 `.dsh-wb-starter.json`。更新社区脚手架不会覆盖本项目；需要升级时先用相同确认配置在临时目录生成，再审阅差异。CLI 用法见 [docs/CLI-GIT.md](docs/CLI-GIT.md)。
 
-| 文档 | 内容 |
-| --- | --- |
-| [SPEC](docs/SPEC.md) | 项目规格 + §13 K1–K6 患者视角红线 |
-| [DEV-REQUIREMENTS](docs/DEV-REQUIREMENTS-2026-10-25.md) | 强约束 H1–H14 + 可回退默认值 D1–D10 |
-| [DIFF-MATRIX](docs/DIFF-MATRIX.md) | 差异化实测（重名率/6 条断言/3 个最近邻区分） |
-| [PROTOTYPE-INDEPENDENT-REVIEW](docs/PROTOTYPE-INDEPENDENT-REVIEW.md) | 独立评审报告（P0 = 6 / P1 = 19 / P2 = 9，含逐条证据） |
-| [P0-FIX-TRAIL](docs/P0-FIX-TRAIL.md) | 6 条 P0 的修法与复验输出；P1/P2 的"已修 / 不修及理由" |
-| [SPEC §14](docs/SPEC.md) | 指标卡（27 号）/ 一图秀（16 号）/ 试验匹配（35 号）的结构决定 |
-| [PATIENT-FLOW](docs/PATIENT-FLOW.md) | 患者旅程 P0–P10（假设模型） |
-| [SCENARIOS](docs/SCENARIOS.md) | 16 条场景（患者原话/页面接住/明确不做什么） |
-| [USER-RESEARCH](docs/USER-RESEARCH.md) | 证据分层（E0 = 0 访谈）、H1–H6、访谈提纲 |
-| [INTERACTION-DESIGN](docs/INTERACTION-DESIGN.md) | 16 条路径 + CRUD 双通道 + IP1–IP10 |
-| [CLINICAL-DATA](docs/CLINICAL-DATA.md) | 医学事实与术语边界（逐条带来源与核验状态） |
-| [DEV-PLAN](docs/DEV-PLAN.md) | 里程碑与实测记录（进度唯一权威） |
-| `research/medical/` | 510 行 36 条医学事实，逐条带来源 |
-| `research/regulatory/` | NMPA 核实记录（全站 412，获批状态如实"未核实"） |
+## HTML先行与数据演进
 
-## 已知边界
-
-1. **0 访谈**：所有场景为假设，G1 签认时已显式声明。
-2. **0 临床核对**：医学文案未经医生评审。
-3. **NMPA 全站 412**：中国获批状态整列"未核实"，界面不得渲染成"未获批"。
-4. **NCCN 仅患者版**：随访间隔标"患者版转述"；专业版原文未取得。
-5. **无离线试验语料**：STS 未被胰腺癌离线语料覆盖，通道未配置时如实显示"未查过"。
-
-## 许可
-
-private / UNLICENSED。市场投稿：**不适用**（未授权）。
-
-Logo 见 `assets/brand/sarcopal.svg`（本项目自绘，双股螺旋 + 暖砂点，不做人体或器官图示）。
-
-感谢小x宝社区、DataElement 社区。初始化来源记录见 `.dsh-wb-starter.json`。
+业务开发前先交付HTML交互工作台原型、实际预览并由用户确认版本/hash和范围。数据设计先区分领域事实、流程状态和页面读模型，走查前端/流程变化、兼容与迁移；原型对象不直接作为表。见[规范](docs/14-HTML-AND-DATA-CONTRACT.md)。

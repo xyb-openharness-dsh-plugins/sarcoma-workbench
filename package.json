@@ -1,7 +1,7 @@
 {
   "name": "@xyb-community/sarcoma-workbench",
-  "version": "0.1.1",
-  "description": "本机优先的软组织肉瘤（STS）病理亚型档案、部位分轨随访、局部与全身治疗线并行、影像基线锚点与试验检索工作台",
+  "version": "0.2.6",
+  "description": "软组织肉瘤（STS）患者与照护者的本机病程资料工作台：把散落的病理与分型、手术与切缘记录、治疗线序与副作用、复查影像与功能变化整理成可核对、可回溯的材料，并整理成就诊能带着走的问题清单。",
   "private": true,
   "type": "module",
   "main": "./dsh/index.js",
@@ -14,26 +14,23 @@
   "files": [
     "dsh",
     "lib",
-    "public",
     "assets",
     "cordis.patch.yml",
     "README.md",
-    "NOTICE.md"
+    "NOTICE.md",
+    "public"
   ],
   "scripts": {
-    "check": "node --check dsh/index.js && node --check dsh/static.js && node --check lib/client.js && node scripts/build-version.mjs --check && node scripts/build-public.mjs --check && node scripts/check-workbench-package.mjs . && node scripts/check-host-contract.mjs && node scripts/check-agent-pane-contract.mjs . && node --test test/*.test.mjs",
-    "check:host": "node scripts/check-host-contract.mjs",
-    "test": "node --test test/*.test.mjs",
+    "check": "node --check dsh/index.js && node --check lib/client.js && node scripts/check-workbench-package.mjs . && node scripts/check-primer-links.mjs && node scripts/check-version.mjs . && node scripts/check-pane-params.mjs . && node scripts/check-client-primer.mjs && node scripts/check-ai-pane.mjs && node scripts/check-agent-pane-contract.mjs . && node --test test/*.test.mjs",
     "audit": "node scripts/check-conformance.mjs .",
-    "release:check": "npm run check && npm run test && npm run audit",
+    "release:check": "npm run check && npm run audit",
     "pack:check": "npm pack --dry-run",
-    "probe:artifact": "node scripts/serve-artifact.mjs",
-    "probe:tabs": "python3 scripts/verify-tabs-on-artifact.py",
     "probe:page-view": "node scripts/probe-page-view.mjs",
-    "build:public": "node scripts/build-public.mjs",
-    "check:public": "node scripts/build-public.mjs --check",
-    "build:version": "node scripts/build-version.mjs",
-    "check:version": "node scripts/build-version.mjs --check"
+    "probe:primer": "node scripts/probe-disease-primer.mjs",
+    "probe:prototype": "node scripts/probe-prototype.mjs",
+    "probe:interaction": "node scripts/probe-interaction.mjs",
+    "check:pane-params": "node scripts/check-pane-params.mjs .",
+    "check:version": "node scripts/check-version.mjs ."
   },
   "dsh": {
     "bundle": {
